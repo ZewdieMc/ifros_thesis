@@ -1,6 +1,6 @@
-# LiDAR Odometry and Mapping Beyond RTK Accuracy
+# LiDAR-based Mapping module for autonomous Navigation
 
-Author: Liviu Florescu
+Author: Zewdie Habtie
 
 MSc Intelligent Field Robotic Systems (IFRoS)
 
