@@ -2,19 +2,26 @@
 \label{ch:intro}
 
 % - General description of robotics;
-% - General description of perception;
-% - General description of localization.
+\paragraph{\textnormal{In recent years, robotics has evolved with the goal to develop intelligent robots that can assist or replace human beings. In order for these robots to operate effectively and efficiently  in diverse environment, a set of modules that define the robot autonomy such as path planning, localization, mapping, perception, and manipulation are required. These modules are interconnected to each other in that one can be an input to the other. In similar manner to how we humans understand and interact with our environment, robots also need to have these modules tightly integrated.}}
 
-Unlike many other LiDAR odometry systems such as ICP-based methods, FAST-LIO employs a direct lidar-inertial(LiDAR-IMU) fusion approach. IMU inputs are used to predict the state, and LiDAR input are used to update the state and map.
+% - General description of robot autonomy modules;
+\paragraph{\textnormal{The important module that helps robots to understand their surrounding is mapping. Map is an important prerequisite that helps a robot determine the location of objects within its environment, enabling it to operate and perform tasks such as navigation, obstacle avoidance, and path planning. Both mapping and localization modules are usually combined and referred to as Simultaneous Localization and Mapping (SLAM) module where the robot builds the map while continuously localizing itself within the map.  The planning module allows the robot to plan a path from its current pose (position, and orientation) to a  goal pose. An algorithm that assists the robot to follow the planned path is also considerably essential entity. Using perception module, robot senses and interpret the environment. In same way we humans use our sensing organs to sense our surrounding, robot uses its onboard sensors such as camera, Light Detection and Ranging (LiDAR), \textcolor{red}{ RADAR, and other sensors.} The manipulation module enables the robot to interact with objects in its environment by performing tasks such as grasping, picking, placing, and etc.}}
+
+% - General description of localization and mapping.
+\paragraph{\textnormal{Map being an important prerequisite and SLAM being the state-off-the-art solution to generating it, there are several approaches to solving SLAM in the literature using different or similar methods. The two main approaches are online SLAM and full SLAM.  Online SLAM methods estimate the current state and  map based on all past observations and controls. These methods include Kalman Filter(KF), Extended Kalman Filter (EKF), Particle Filter (PF), and Unscented Kalman Filter (UKF)\cite{huang2008analysis}.}} 
+\textbf{\textcolor{red}{CONTINUE EXPANDING ON THIS CATEGORY.....}}
+
+%Unlike many other LiDAR odometry systems such as ICP-based methods, FAST-LIO employs a direct lidar-inertial(LiDAR-IMU) fusion approach. IMU inputs are used to predict the state, and LiDAR input are used to update the state and map.
 
 % order of sentences should be arranged for coherence
-USING ICP TO DIRECTLY REGISTER 3D LiDAR POINTS TO MAP RESULTS IN EXTREMELY POOR RESULTS \cite{Blanco-Claraco-RSS-19}. This is because of the uneven distribution of 3D LiDAR points where the dense near points dominate the cost function of ICP optimization.
-
-\textbf{Loop closure:} The process of recognizing that the robot has returned to its previously visited location. This is important for correcting errors in the map and the robot's estimated trajectory. Without loop closure, even small localization errors accumulate over time causing the map to drift and be inaccurate. \textbf{Wrong loops} and their effects in causing divergence in the map should also be explained.
-\textbf{Reverse direction loop} and \textbf{the normal loop possibly ....circular loop}(need to clearly explain this).
+%USING ICP TO DIRECTLY REGISTER 3D LiDAR POINTS TO MAP RESULTS IN EXTREMELY POOR RESULTS \cite{Blanco-Claraco-RSS-19}. This is because of the uneven distribution of 3D LiDAR points where the dense near points dominate the cost function of ICP optimization.
+%
+%\textbf{Loop closure:} The process of recognizing that the robot has returned to its previously visited location. This is important for correcting errors in the map and the robot's estimated trajectory. Without loop closure, even small localization errors accumulate over time causing the map to drift and be inaccurate. \textbf{Wrong loops} and their effects in causing divergence in the map should also be explained.
+%\textbf{Reverse direction loop} and \textbf{the normal loop possibly ....circular loop}(need to clearly explain this).
 % evaluation to enable future use
 % document structure
 \section{Background and motivation}
+
 \section{Problem Statement}
 \section{Objectives}
 \section{Thesis structure}
