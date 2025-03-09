@@ -7,8 +7,8 @@ MSc Intelligent Field Robotic Systems (IFRoS)
 Tex template: [ELTE IK Thesis](https://github.com/mcserep/elteikthesis)
 
 ## Compile with
-
-- pdflatex
-- biber
-- makeglossaries
-- pdflatex
+- pdflatex main.tex
+- biber main
+- makeglossaries main
+- pdflatex main.tex
+- pdflatex main.tex
