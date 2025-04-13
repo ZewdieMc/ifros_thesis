@@ -1,41 +1,202 @@
 \chapter{Literature Review}
 \label{ch:review}
 
-\paragraph{\textnormal{The goal of this chapter is to present the research context in which our project was conducted, by looking at common methods for each of the main components and highlighting those that inspired the current approach.}}
+\section{Introduction}
+\paragraph{\textnormal{The purpose of this chapter is to provide background knowledge and review existing research related to LiDAR-Based SLAM, state estimation, and loop detection.}}
 
-\paragraph{\textnormal{In mobile robotics, map is an important prerequisite that enables robots to operate and perform different tasks such as navigation, obstacle avoidance, path planning, etc. Simultaneous Localization and Mapping (SLAM) is the most popular method in the literature to generate maps. Among the different methods of SLAM, vision-based and Light Detection and Ranging(LiDAR) technologies are the most popular in the literature. Although each SLAM method has its advantages and drawbacks, they are essential for different tasks. LiDAR technologies will likely remain essential for years to come due to their numerous advantages: robust to various lighting conditions, accurate 3D measurements with higher Field of View (FoV), among others, despite their high cost and bulkiness to install in small-scale robots like drones. Solid-state LiDARs are cost-effective, lightweight, and precise, making them ideal for UAVs in mapping and complex environments. }}
+\paragraph{\textnormal{In mobile robotics, map is an important prerequisite that enables robots to operate and perform different tasks such as navigation, obstacle avoidance, path planning, etc. SLAM is the most popular method in the literature to generate maps. Among the different methods of SLAM, vision-based and LiDAR technologies are the most popular in the literature. Although each SLAM method has its advantages and drawbacks, they are essential for different tasks. LiDAR technologies will likely remain essential for years to come due to their numerous advantages: robust to various lighting conditions, accurate 3D measurements with higher Field of View (FoV), among others, despite their high cost and bulkiness to install in small-scale robots like drones. Solid-state LiDARs are cost-effective, lightweight, and precise, making them ideal for UAVs in mapping and complex environments. }}
 
-Although these solid-state LiDARs have good potential, they have presented new challenges to SLAM solutions: 1) When the robot is operating in a cluttered environment, there not be strong features with geometric shapes like edges and planes. This causes the LiDAR SLAM to degenerate easily. 2) Fusing many feature points with Inertial Measurement Units (IMU) is challenging. 3) LiDAR points are sequentially sampled resulting in each point having a different timestamp which causes motion distortion that severely affects the point registration \cite{xu2021fastlio}.
+Although these solid-state LiDARs have good potential, they have presented new challenges to SLAM solutions: 1) When the robot is operating in a cluttered environment, there not be strong features with geometric shapes like edges and planes. This causes the LiDAR SLAM to degenerate easily. 2) Fusing many feature points with IMU is challenging. 3) LiDAR points are sequentially sampled resulting in each point having a different timestamp which causes motion distortion that severely affects the point registration \cite{xu2021fastlio}.
 \\ \\
-Several works exist in the literature on LiDAR SLAM. Some of these works use filter-based (Kalman filter) approach while others use optimization-based(factor graphs) for the state estimation. Although filter-based approaches are simple in terms of implementation and computational requirements, they accumulate errors over time causing a larger drift. Optimization-based approaches on the other hand formulate the SLAM problem as non-linear problem and optimize the whole robot trajectory and the map minimizing the drift, more specifically during loop closure. Here we review the most related and relevant works.
+
+Several works exist in the literature on LiDAR SLAM. Some of these works use filter-based (Kalman filter) approach while others use optimization-based(factor graphs) for the state estimation. Although filter-based approaches are simple in terms of implementation and computational requirements, they accumulate errors over time causing a larger drift. Optimization-based approaches on the other hand formulate the SLAM problem as non-linear problem and optimize the whole robot trajectory and the map minimizing the drift, more specifically during loop closure. In the following sections, we introduce basic probabilistic formulations, algorithms, and concepts that are used in the research. We also review the most related and relevant works.
+
+\section{Introduction to joint probability}
+\paragraph{\textnormal{In robotics, sensor measurements, controls, and robot states are modeled as random variables. This modeling helps to correctly incorporate the uncertainties that exist due to the sensor measurements, the motion model of the robot, or the environment itself. These variables can take multiple values following probabilistic laws. Probabilistic inference calculates the probability distributions of derived random variables, such as sensor data. Let \textbf{X} denote a random variable and \textit{x} a possible event. The probability of \textbf{X} taking a value \textit{x} is denoted as
+}}
+\begin{equation} p(X = x) \label{eq:probability}\end{equation}
+Equation \ref{eq:probability} can also be written as \textit{p(x)} for simplicity. The sum of all possible probabilities of discrete random variable \textbf{X} sum to 1.
+\begin{equation} \sum_x p(x) = 1 \label{eq:pro_sum}\end{equation}
+
+
+\paragraph{\textnormal{To make estimation in a continuous space, a set of continuous random variables with probability density functions(PDFs) are used. Most commonly a normal distribution with mean \textit{$\mu$} and variance \textit{$\sigma^{2}$}, shown in equation \ref{eq:gauss}, is used. }}
+
+\begin{equation}
+	p(x) = \frac{1}{\sigma \sqrt{2\pi}} \exp\left( {-\frac{1}{2} \left( \frac{x - \mu}{\sigma} \right)^2}\right)
+	\label{eq:gauss}
+\end{equation}
+
+
+\paragraph{\textnormal{The PDF for multivariate random variable, usually expressed as vector form, is shown in equation \ref{eq:multi_gauss} where $\mu \in \mathbb{R}^n$ is the mean and $\Sigma$ is the \textit{covariance matrix}.}}
+\begin{equation}
+	p(x) = \det\left( 2\pi\Sigma\right)^{-\frac{1}{2}} \exp\left\{ -\tfrac{1}{2}(x - \mu)^T\Sigma^{-1}(x - \mu)\right\}
+		\label{eq:multi_gauss}
+\end{equation}
+
+\paragraph{\textnormal{To express the joint probability distribution of two random variables \textbf{X} and \textbf{Y}, we use the notation $\textit{p(x, y)} = p(\textbf{X}=x$ and $\textbf{Y}=y)$. If \textbf{X} and \textbf{Y} are independent, $\textit{p(x,y)} = $ $\textit{p(x)  p(y)} $.}}
+
+\paragraph{\textnormal{The conditional probability of \textit{x} given \textit{y} is denoted as:}}
+\begin{equation}
+	p(x \mid y) = \frac{p(x, y)}{p(y)}
+	\label{eq:condn_prob}
+\end{equation}
+
+\paragraph{\textnormal{Leveraging the conditional probability shown in equation \ref{eq:condn_prob}, Bayes rule can be derived and put as in the following equation \ref{eq:bayes_rule}.}}
+
+\begin{equation}
+p(x\mid y) = \frac{p(y\mid x)\ p(x)}{p(y)}
+	\label{eq:bayes_rule}
+\end{equation}
+
+\paragraph{\textnormal{It is also possible to condition the Bayes rule described in equation \ref{eq:bayes_rule} on arbitrary other variables, \textit{z}, as shown in equation \ref{eq:bayes_mult}}.}
+
+
+\begin{equation}
+	p(x\mid y, z) = \frac{p(y\mid x, z)\ p(x \mid z)}{p(y \mid z)}
+	\label{eq:bayes_mult}
+\end{equation}
+Similarly, probabilities of independent random variables \textit{x} and \textit{y} can be combined on other variable \textit{z} as in equation \ref{eq:combined_pro}. 
+
+\begin{equation}
+	p(x, y\mid z) = p(y\mid z)\ p(x \mid z)
+	\label{eq:combined_pro}
+\end{equation}
+\section{LiDAR Odometry and LiDAR Inertial Odometry}
+
+\colorbox{yellow}{move text to methodology or literature review???}
+\paragraph{\textnormal{Accurate 3D mapping with LiDARs requires efficiently registering the point clouds to a global map frame. This efficiency of registration depends on accurate estimation of the LiDAr pose in continuous motion. Independent motion estimation systems such as Global Navigation Satellite Systems (GNSS) or Inertial Navigation Systems(INS) can be used for registration,however GNSS systems do not provide continuous signal in diverse environments and INS accumulate drifts over time resulting in inconsistency in the 3D map. }}
+
+\paragraph{\textnormal{LiDAR odometry (LO) is a continuous estimation of the motion of the vehicle by analyzing successive 3D point clouds captured by LiDAR sensor mounted on it. This works by tracking the changes in the structure of the environment that is achieved aligning the current scan to the previous and computing the relative motion. LO methods are robust in environments with rich features (planes, and edges). The most widely used registration method Iterative Closest Point (ICP) is one example that can be used to estimate motion with LO.}}
+
+\paragraph{\textnormal{However, LO suffers from drift and degeneration specially in challenging environments such as repetitive structures and dynamic objects. Fusing high frequency IMU data with LiDAR can rescue LO and by reducing the drift thereby improving the motion estimation. This fusion of LiDAR and IMU for motion esstimation is known as LiDAR Inertial Odometry (LIO). Several researches \cite[]{xu2022fast, shan2020lio, xu2021fastlio} have been conducted demonstrating the effectiveness LIO for motion estimation and 3D mapping.}}
+
+\subsection{State estimation??}
+\section{Introduction to Bundle Adjustment}
+\paragraph{\textnormal{Bundle adjustment (BA) is a technique used to jointly solve both the 3D structure and camera poses in many visual applications such as structure from motion (SfM) and Visual-SLAM (V-SLAM). It works to minimize the re-projection error, see figure \ref{fig:temp_ba}, between the observed 2D features in the images and projected 3D points(features), changing both the camera poses and the pose of 3D points to minimize the error.}}
+
+\paragraph{\textnormal{One important thing to consider when working with BA is its cost. The computational complexity of BA is \textbf{O($qN+lM)^{3}$} where N is the number points, M is the number of poses, q and l the number parameters for the points and the camera respectively. To mitigate this drawback of BA, different ways can be incorporated including using windowed BA with small window size, and optimizing only on poses and keeping 3D feature points fixed\cite{bibid} }} \colorbox{yellow}{paraphrase this paragraph}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{images/vba.png}
+	\caption{Visual BA}
+	\label{fig:temp_ba}
+\end{figure}
+
+\subsection{LiDAR Bundle Adjustment}
+
+\paragraph{\textnormal{In large-scale SLAM applications—such as at the city scale—map inconsistencies are common, even after Pose Graph Optimization (PGO), since PGO optimizes only relative poses. Additionally, loop closure errors can significantly impact the global consistency of the map \cite{scaramuzza2011visual}. To address this, LiDAR BA (LBA) can be employed to improve global consistency. Furthermore, vertical misalignments, which most LIO systems are vulnerable for, can be corrected using LBA, although GPS data, if available, may also help mitigate vertical drift.}}
+
+\paragraph{\textnormal{Similar to visual BA, the LBA problem can be formulated to jointly determine the LiDAR poses and the global 3D point cloud map thereby decreasing the drift caused by accumulation of scan registration errors. Even though LBA seems simpler than visual BA due to accurate depth measurements, its formulation is not trivial. Due to the sparse and non repetitive nature of LiDAR point clouds, the natural formulation used in visual BA to minimize the re-projection error does not apply to LBA \cite{lin2020loam}.}}
+
+\paragraph{\textnormal{A work by Liu et al. \cite{liu2021balm} introduced a formulation of BA on sparse LiDAR feature points with edges and planes to refine map incrementally built with LiDAR SLAM. In this formulation, unlike visual BA, the plane or edge parameters (the normal vector \textbf{n}, and point in the plane \textbf{q}, Eq. \ref{eq:plane_params}) are first analytically solved such that the BA problem is only related to LiDAR poses and such parameters are eliminated in each iteration of optimization \cite{10024300}. This drastically reduces the cost of BA by enforcing it to  only perform the so called motion-only BA without the need to optimize the 3D points.
+}}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.5\textwidth]{images/lba.png}
+	\caption{A plane in space and corresponding feature points drawn from different scans}
+	\label{fig:lba}
+\end{figure}
+
+\begin{equation}
+	\min_{\mathbf{n}, \mathbf{q}} \frac{1}{N} \sum_{i=1}^{N} \left( \mathbf{n}^T (\mathbf{p}_i - \mathbf{q}) \right)^2
+	\label{eq:plane_params}
+\end{equation}
+
+\paragraph{\textnormal{Equation \ref{eq:lba_formulation} shows the direct formulation of LBA that minimizes the sum of squared distances of each LiDAR point  to the plane where \textbf{p$_{i}$} is a point observed from pose \textbf{T$_{i}$}, and \textbf{A} is the covariance matrix of the observed points, $\lambda_k$ is the k-th smallest eigenvalue of \textbf{A}, \textbf{u}$_k$ is the corresponding eigenvector. }}
+
+
+\begin{align}
+	(\mathbf{T}^*, \mathbf{n}^*, \mathbf{q}^*) 
+	&= \arg \min_{\mathbf{T}, \mathbf{n}, \mathbf{q}} \frac{1}{N} \sum_{i=1}^{N} \left( \mathbf{n}^T (\mathbf{p}_i - \mathbf{q}) \right)^2 \notag \\
+	&= \arg \min_{\mathbf{T}} \left( \min_{\mathbf{n}, \mathbf{q}} \frac{1}{N} \sum_{i=1}^{N} \left( \mathbf{n}^T (\mathbf{p}_i - \mathbf{q}) \right)^2 \right) \notag \\
+	&= \lambda_3(\mathbf{A}), \quad \text{if } \mathbf{n}^* = \mathbf{u}_3, \; \mathbf{q}^* = \bar{\mathbf{p}}  \notag \\
+	\text{where} \quad \bar{\mathbf{p}} &= \frac{1}{N} \sum_{i=1}^{N} \mathbf{p}_i, \quad 
+	\mathbf{A} = \frac{1}{N} \sum_{i=1}^{N} (\mathbf{p}_i - \bar{\mathbf{p}})(\mathbf{p}_i - \bar{\mathbf{p}})^T 
+	\label{eq:lba_formulation}
+\end{align}
+\paragraph{\textnormal{The optimization on the scan poses \textbf{T} finally corresponds to minimizing the eigenvalues of matrix \textbf{A} in Eq. \ref{eq:lba_formulation}. The formulation defined in Eq \ref{eq:lba_formulation} requires the set of points, \textbf{p}$_i$ acquired from set of scan poses \textbf{T}, belonging to the same plane feature to be defined. Adaptive voxelization technique \cite{liu2021balm} is used to define the points that belong to the plane. If all points in the voxel lie on the plane by examining the eigenvalue of the point covariance matrix, that voxel is kept in memory otherwise the voxel is further subdivided into eight octants until a certain minimum threshold voxel size is reached. This generates voxel map with voxels of different sizes adapted to the environment. }}
+
+\paragraph{\textnormal{The voxilization process described above extends to non-planar features such as curved surface when the voxel map is performed at a finer level. The maximum depth of a tree and the minimum number of points contained in a voxel are the two conditions used to stop the recursive subdivision of a voxel.}}
+
+\section{Optimization}
+\section{Overview and types of SLAM}
+\paragraph{\textnormal{There are several types of SLAM solutions. Depending on the type of exteroceptive sensors used, LiDAR SLAM and V-SLAM are the most commonly used types. LiDAR SLAM uses laser sensors to measure distances and create precise 3D maps, making it highly effective in dark or low-feature environments. However, its high cost and power consumption make it less suitable for low-cost robotics. On the other hand, V-SLAM depends on monocular, stereo, or RGB-D cameras to detect visual features and track motion, providing a more affordable and lightweight solution. While V-SLAM captures detailed textures and colors, it struggles in low-light conditions and areas with few visual features. Despite these differences, both types are essential in robotics and autonomous systems. To improve accuracy, many modern applications combine both techniques using sensor fusion, taking advantage of their strengths to enhance localization and mapping performance. Based on the solution methodology used, SLAM can be further categorized into online SLAM and Full SLAM.}}
+
+\subsection{Online SLAM}
+\paragraph{\textnormal{Online SLAM methods estimate the current state $ x_{t} $ and the whole map $ m $ based on all past observations $ z_{1:t} $ and controls $ u_{1:t} $. These methods use Kalman Filter(KF), Extended Kalman Filter (EKF), Particle Filter (PF), and Unscented Kalman Filter (UKF)\cite{huang2008analysis}. EKF-SLAM is one of the most popular online SLAM algorithms that uses Bayes filter to estimate the robot poses and landmark locations, assuming Gaussian distributions and local linearity. Bayes filter is a recursive filter for state estimation that includes two steps, prediction and update as shown in Eq \eqref{eq:bayes}, where $\bar{belief}(x_{t}) $ represents the prior belief about the robot state at time $ t $ before incorporating the latest observation (prediction step) and $ belief(x_{t}) $ is a posterior belief that defines the robots refined state after incorporating latest observation (update step).}}
+
+\begin{equation}
+	\begin{split}
+		\bar{belief}(x_{t}) &= \int p(x_{t} | x_{t-1}, u_{t}) \, belief(x_{t-1}) \, dx_{t-1}, \\
+		belief(x_{t}) &= p(z_{t} | x_{t}) \bar{belief}(x_{t}).
+	\end{split}
+	\label{eq:bayes}
+\end{equation}
+\paragraph{\textnormal{Map generated with online SLAM is not accurate due to the linearization errors accumulated over time, local state estimation and absence of loop closure constraint to refine accumulated errors.}}
+
+
+\subsection{Full SLAM}
+\paragraph{\textnormal{FuLL SLAM aims to solve the problem of finding the most probable sequence of robot poses $ x_{1:t} $ and the map $m$, given all sensor measurements $ z_{1:t} $ and control inputs $ u_{1:t} $\cite{thrun2002probabilistic}. It is mostly used to build consistent map using point clouds and solve SfM problems, specially to handle loop closure events. 
+}}
+
+%where $ p(x_{0:t}) $ represents the prior on the robot motion, $ p(m) $ is prior on the map, $ p(z_t | x_t, m) $ is the likelihood of observations given the map and pose, and $ p(x_t | x_{t-1}, u_t) $ describes the motion model\cite{prpy2023}. 
+
+\subsubsection{Bayesian network}
+\paragraph{\textnormal{One approach to solving the Full SLAM problem is using Bayesian network where the problem is formulated as joint distribution of all the variables($ x_{1:t}, z_{1:t}, u_{1:t},$ and $ m $). It is a probabilistic directed graph model for solving full SLAM where the entire problem is formulated as joint distribution of the robot poses ($x_{1:M}$), the measurements ($z_{1:K}$), controls ($u_{1:M}$), and landmarks ($l_{1:N}$). The joint probability distribution of the whole SLAM is defined as in equation \ref{eq:bayes_slam} where the variables X, L, U, and Z are all robot poses, all landmarks, all control inputs, and all measurements respectively (Eq.\ref{eq:vars}). Figure \ref{fig:full-bayesian_net} shows a typical Bayes network where every node encodes a conditional probability on the variable and its parent nodes.}} 
+\begin{equation}
+	P(X, L, U, Z) \propto P(\mathbf{x}_0) \prod_{i=1}^M P(\mathbf{x}_i \mid \mathbf{x}_{i-1}, \mathbf{u}_i) \prod_{k=1}^K P(\mathbf{z}_k \mid \mathbf{x}_{i_k}, \mathbf{l}{j_k})
+	\label{eq:bayes_slam}
+\end{equation}
+\begin{equation}
+	\begin{aligned}
+		X &= \{\mathbf{x}_i\}, \quad i \in 0 \dots M \\
+		L &= \{\mathbf{l}_j\}, \quad j \in 1 \dots N \\
+		U &= \{\mathbf{u}_i\}, \quad i \in 1 \dots M \\
+		Z &= \{\mathbf{z}_k\}, \quad k \in 1 \dots K
+	\end{aligned}
+	\label{eq:vars}
+\end{equation}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{images/bayesian.png}
+	\caption{ Probabilistic Bayesian net SLAM model}
+	\label{fig:full-bayesian_net}
+\end{figure}
+
+\subsubsection{Factor Graph}
+
+\paragraph{\textnormal{Bayesian network uses only arrows to define dependency between variables which does not encode much of information. Effortlessly, Bayesian network can be converted to factor graphs by conditioning on sensor data \cite{dellaert2017factor}. Figure \ref{fig:full-factor_graph} shows the factor graph obtained by converting the Bayesian network shown in figure \ref{fig:full-bayesian_net}. Each node in the Bayesian network is split in both variable node and factor node in the graph. The factor is connected to a variable node and parent variable nodes in the graph.}}
+
+\paragraph{\textnormal{Factor Graphs represent the probability distribution as a bipartite graph with variable nodes (green circles in Fig. \ref{fig:full-factor_graph}) and factor nodes (white squares in Fig. \ref{fig:full-factor_graph}) where edges can only connect variable nodes via factor nodes. These factor nodes encode information that enters into the system and the graph captures the propagation of these information to the hidden states that we intend ot estimate. We denote variable nodes as \textbf{x} and factor nodes as \textbf{\o{}}. The factors define the probabilistic constraint motion model (\textbf{\o{}$_{i}$}) and the likelihoods measurements (\textbf{\o{}$_{\textbf{k}}$}). The joint probability distribution of the problem is then computed as the product of all factors in the graph(Eq. \ref{eq:factor-graph}). This graph structure allows efficient optimization via methods such as Gaussian Belief Propagation or Nonlinear Least Squares Optimization. Factor graph is the core of the prevalent SLAM technique known as pose graph optimization (PGO). Most of the LiDAR SLAM works \cite[]{10024300, shan2020lio, blanco2025mola_lo}, even the most recent KISS(Keep It Small and Simple) SLAM \cite{guadagnino2025kiss} use PGO with factor graph to generate 3D map of the environment from LiDAR point clouds.}}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.7\textwidth]{images/fslam.png}
+	\caption{ Full SLAM model with factor graph}
+	\label{fig:full-factor_graph}
+\end{figure}
+
+\begin{equation}
+	p(\mathbf{X} \mid \mathbf{Z}) \propto \prod_{k=1}^{K} \phi_k \quad \text{where } \phi_k \geq 0 \quad \forall K
+	\label{eq:factor-graph}
+\end{equation}
+
+\paragraph{\textnormal{Solving the SLAM problem with factor graph is exactly determining the values of the unknown variable nodes(\textbf{X}) that maximize the agreement with the uncertain measurements(\textbf{\textbf{Z}}). This is known as maximum a posteriori estimate (MAP). Solving for the states (variable nodes) that maximize the posterior $p(X \mid Z)$ (Eq. \ref{eq:MAP}) can be performed by exploiting non-linear optimization methods.}}
+\begin{equation}
+	X^{MAP} = \arg\max_X p(X|Z) = \arg\max_X \frac{p(Z|X) p(X)}{p(Z)}
+	\label{eq:MAP}
+\end{equation}
+
 \section{Related works}
-\cite{zhang2014loam} proposed a real-time method for odometry and mapping. They achieved low-drift results without the need to use IMU and high-accuracy range measurements. The costly SLAM problem is divided into to algorithms where one algorithm computes the odometry at a higher frequency and the other algorithm runs at a much lower frequency to register point cloud.
-\\ \\
-A method by \cite{xu2021fastlio} presented a novel approach to tightly-coupled LiDAR-inertial odometry by proposing a new formula for computing the Kalman gain, which demonstrates equivalence to the conventional formula but reduces computation complexity based on state dimensions rather than measurement dimensions. An Iterative Kalman Filter(IKF) is used to minimize the point-to-plane distance during the registration of scan to map. The authors implemented their method into a robust LiDAR-inertial odometry package called FAST-LIO that operates effectively on a small-scale quadrotor. Experiments conducted in varied environments validate the system's resilience against fast motion and vibration noise.
-\\ \\
-\cite{kim2018scan} presented Scan Context, a novel spatial descriptor designed for outdoor place recognition using 3D LiDAR scans. Unlike traditional histogram-based methods, Scan Context encodes the entire point cloud into a matrix format, preserving the absolute geometrical structure of the environment. This approach utilizes a cosine distance measure for similarity scoring and implements a two-phase search algorithm to enhance loop detection efficiency, particularly in urban settings. Experimental results demonstrate that Scan Context significantly outperforms existing global descriptors in various datasets, providing robust performance against noise and viewpoint changes.
-
-\paragraph{}  
-\cite{10024300} present a novel approach for large-scale LiDAR mapping by introducing a hierarchical LiDAR bundle adjustment (HLBA) framework. The method aims to improve the consistency and accuracy of LiDAR-based maps by formulating a global optimization problem that jointly refines multiple scans. Unlike conventional SLAM techniques that rely on pairwise constraints, HLBA leverages a hierarchical structure to balance local precision and global consistency, mitigating drift accumulation over extended trajectories. The authors demonstrate the effectiveness of their approach through extensive experiments on real-world datasets, showcasing its advantages in handling large-scale environments with minimal loop closures. Their results indicate that HLBA outperforms existing methods in terms of mapping accuracy and robustness, particularly in scenarios with sparse revisits.
-
-\paragraph{}  
-A key contribution of this work is the introduction of an efficient optimization strategy that scales well with the number of LiDAR scans. By organizing the LiDAR data into hierarchical layers, the proposed framework enables efficient refinement without requiring excessive computational resources. The authors also incorporate a robust outlier rejection mechanism to enhance data association, ensuring reliable pose estimation in challenging conditions. Furthermore, the method integrates seamlessly with existing LiDAR-based odometry pipelines, making it adaptable to various robotic platforms. Overall, this study provides a significant advancement in large-scale LiDAR mapping, offering a practical solution for long-term autonomous navigation and high-fidelity 3D reconstruction.
+\paragraph{\textnormal{Ji Zhang et al.  \cite{zhang2014loam} proposed a real-time method for LiDAR odometry and mapping (LOAM). They achieved low-drift results without the need to use IMU and high-accuracy range measurements. In their method, the costly SLAM problem is divided into to algorithms where one algorithm computes the odometry at a higher frequency and the other algorithm runs at a much lower frequency to register point cloud. While it achieves impressive accuracy and real-time performance, it lucks inertial fusion and loop closures are not considered.}}
+\paragraph{\textnormal{A method by Xu et al. \cite{xu2021fastlio} presented a novel approach to LIO called \textit{Fast, Robust LiDAR Inertial Odometry package by tightly-coupled Iteratied Kalman Filter }(FAST-LIO) by proposing a new formula for computing the Kalman gain, which demonstrates equivalence to the conventional formula but reduces computation complexity based on state dimensions rather than measurement dimensions. An Iterative Kalman Filter(IKF) is used to minimize the point-to-plane distance during the registration of scan to map. The packages operates effectively on a small-scale quadrotor with fast motion resulting in real-time performance and stable odometry output and mapping at a frequency of 50\textit{HZ}. Experiments conducted in varied environments validate the system's resilience against fast motion and vibration noise. Despite its resilience to fast motion and cluttered environments, FAST-LIO does  not include loop closure or global pose graph optimization causing accumulation of drift over long trajectories.  Hence, in our research, we intended to include loop closure constraint on top of FAST-LIO to correct accumulated drifts over time. To this end, we conducted a review of available loop detection methods and present the relevant and robust method.}}
 
 
-\begin{figure}[h]
-	\centering
-	\includegraphics[width=\textwidth]{images/insert.png}
-	\caption{ Insertion time per point performance of data structures for map management}
-	\label{fig:insertion}
-\end{figure}
-\begin{figure}[ht!]
-	\centering
-	\includegraphics[width=\textwidth]{images/search.png}
-	\caption{ Search time per point performance of data structures for map management}
-	\label{fig:searching}
-\end{figure}
-
-\noindent \cite{xu2022fast} significantly improved upon the original work \cite{xu2021fastlio} by introducing two key advancements: direct point registration and the incremental k-D tree (\textit{ikd-Tree}). Unlike \cite{xu2021fastlio}, which relies on hand-crafted feature extraction, the new approach registers raw LiDAR points directly to the map, increasing accuracy and adaptability to different LiDAR sensors. The newly introduced ikd$\-$Tree enables efficient incremental updates, dynamic re-balancing, and on-tree downsampling, reducing computational load while maintaining real-time performance. These improvements allow a new approach to achieve higher accuracy at a lower computational cost, making it more robust for diverse environments, including those with small FoV LiDARs and aggressive motion.
+\paragraph{\textnormal{Kim et al. \cite{kim2018scan} presented Scan Context, a novel spatial descriptor designed for outdoor place recognition using 3D LiDAR scans. Unlike traditional histogram-based methods \cite[]{himstedt2014large, muhammad2011loop, wohlkinger2011ensemble}, Scan Context encodes the entire point cloud into a matrix format, preserving the absolute geometrical structure of the environment. This approach utilizes a cosine distance measure for similarity scoring and implements a two-phase search algorithm to enhance loop detection efficiency, particularly in urban settings. Experimental results demonstrate that Scan Context significantly outperforms existing global descriptors in various datasets, providing robust performance against noise and viewpoint changes.}}
 
 
-As showing Figure \ref{fig:insertion} and Figure \ref{fig:searching}, ikd-Tree data structure achieves best overall performance both for point insertion time and point search time.
+\paragraph{\textnormal{A work by Xiyuan Liu et al. \cite{10024300} presented a novel approach for large-scale LiDAR mapping by introducing a hierarchical LiDAR bundle adjustment (HBA) framework. The method aims to improve the consistency and accuracy of LiDAR-based maps by formulating a global optimization problem that jointly refines multiple scans. Unlike conventional SLAM techniques that rely on pairwise constraints, HBA leverages a hierarchical structure to balance local precision and global consistency, mitigating drift accumulation over extended trajectories. The authors demonstrate the effectiveness of their approach through extensive experiments on real-world datasets, showcasing its advantages in handling large-scale environments with minimal loop closures. Their results indicate that HBA outperforms existing methods in terms of mapping accuracy and robustness, particularly in scenarios with sparse revisits. A key contribution of this work is the introduction of an efficient optimization strategy that scales well with the number of LiDAR scans. By organizing the LiDAR data into hierarchical layers, the proposed framework enables efficient refinement without requiring excessive computational resources. The authors also incorporate a robust outlier rejection mechanism to enhance data association, ensuring reliable pose estimation in challenging conditions. Furthermore, the method integrates seamlessly with existing LiDAR-based odometry pipelines, making it adaptable to various robotic platforms. However, HBA map consistency degrades if there are more revisits and loop closures especially if the divergence in the map due to drift is larger than the maximum voxel size, BA might have slow convergence rate.}}
+
+
+
+\paragraph{\textnormal{Wei Xu et al. \cite{xu2022fast} significantly improved upon the original work \cite{xu2021fastlio} by introducing two key advancements: direct point registration and the incremental k-D tree (\textit{ikd-Tree}). Unlike \cite{xu2021fastlio}, which relies on hand-crafted feature extraction, the new approach registers raw LiDAR points directly to the map, increasing accuracy and adaptability to different LiDAR sensors. The newly introduced ikd$\-$Tree enables efficient incremental updates, dynamic re-balancing, and on-tree downsampling, reducing computational load while maintaining real-time performance. These improvements allow a new approach to achieve higher accuracy at a lower computational cost, making it more robust for diverse environments, including those with small FoV LiDARs and aggressive motion. Compared to their original work, the overall processing time for a single scan was improved by approximately a factor of ten. }}

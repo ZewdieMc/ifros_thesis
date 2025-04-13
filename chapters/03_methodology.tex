@@ -1,21 +1,41 @@
 \chapter{Methodology}
 \label{ch:methodology}
+
+
+\section{System Overview}
+The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial odometry, Scan Context for loop closure detection, PGO using GTSAM for correcting drifts in the odometry, and finally hierarchical bundle adjustment(HBA) for global refinement of the map. The diagram shown in figure \ref{fig:overview} illustrates the integrated components used in system pipeline where the LIO and PGO can run in real-time but due to the computational and memory cost, HBA is run offline.
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=\textwidth]{images/block-diagram.png}
-	\caption{System overview of FAST-LIO with loop closure detection and optimization.}
-	\label{fig:fast_lio}
+	\caption{Block diagram of the overall system pipeline.}
+	\label{fig:overview}
+\end{figure}
+\paragraph{\textnormal{FAST-LIO2 outputs odometry and LiDAR scan frames at a frequency of 10-100Hz. The scan frames are updated according to the state estimation module in FAST-LIO2. Aggregating these scans using the odometry output can generate accurate map for short trajectories because LIO performs well for sequential registration of scans. However after long trajectory and revisiting the same locations the map diverges due to accumulated drifts in the odometry.}}
+\paragraph{\textnormal{In the subsequent sections, detailed description of each of the components used in the system will be presented.}}
+
+\section{Description of FAST-LIO2}
+\paragraph{\textnormal{To output odometry at higher frequency, a state estimate module fuses both IMU and LiDAR inputs with an IKF. This involves prediction of the state based on IMU input only, then iteratively update it with LiDAR inputs. }}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{images/ikf.png}
+	\caption{Prediction and update steps of IKF in FAST-LIO state estimation.}
+	\label{fig:overview}
 \end{figure}
 
-\section{System Overview}
-The diagram illustrates a LiDAR-based FAST-LIO mapping system with loop closure detection and pose graph optimization. The key components include:
-
+\paragraph{\textnormal{Sequential state estimation from odometry suffers from drift over long trajectories due to inherent noise in the robot motion, in the sensor measurements, data association problems, or/and dynamics in the environment \cite{gupta2024icra}. Due to such a drift, when the robot revisits the same place, its belief may indicate a different location than the one it already knows before. Efficiently detecting loop closure overcomes this problem by correcting the drift resulting in drastically improved state estimate by integrating pose constraint in the pose graph.}}
+\subsection{Loop closure}
+\colorbox{yellow}{Overview of Loop Closure Techniques and explanation about scan context showing sample loop detection result in rviz from scans.}
 \begin{itemize}
-	\item \textbf{FAST-LIO}: This module integrates IMU and LiDAR data to estimate the system's state in real time. It employs forward propagation for state prediction and backward propagation for refinement. Point cloud data is accumulated and processed using kNN search and residual computation to update the system state. The odometry output is generated at 10-100 Hz, while mapping is performed using an ikd-Tree for efficient point-wise insertion and deletion.
-	\item \textbf{Scan Context}: This block is responsible for detecting loop closures by comparing newly acquired scans with previously stored scan contexts. It involves two main steps: (1) Nearest Neighbor Search, where a KD-tree and ring key are used to retrieve the most similar scan locations, and (2) Pairwise Similarity Score computation, which evaluates the resemblance between scan contexts to identify loop closures.
-	\item \textbf{PGO (GTSAM)}: Optimizes the detected loop closures to refine the trajectory and map.
-	\item The final output is an optimized trajectory and an improved map representation.
+	\item Feature-based methods (e.g., Scan Context, ORB-SLAM)....
+	\item Geometric-based methods() ICP, GTSAM-based approaches....
+	\item Learning-based approaches (e.g., deep learning for place recognition)
+	
 \end{itemize}
+
+
+\paragraph{\textnormal{Gupta et al. proposed a robust loop closure detection pipeline for LiDAR-based SLAM that effectively handles variations in LiDAR sensors, including different scanning patterns, fields of view, and resolutions. Their approach generates local maps from consecutive LiDAR scans and employs a ground alignment module to ensure consistency across diverse motion profiles. A key feature of their method is the use of density-preserving Bird’s Eye View (BEV) projections, from which ORB feature descriptors are extracted for efficient place recognition. These descriptors are stored in a binary search tree, enabling fast retrieval while mitigating perceptual aliasing through self-similarity pruning.}}
+
 % Hardware
 
 % Datasets
@@ -26,3 +46,8 @@ The diagram illustrates a LiDAR-based FAST-LIO mapping system with loop closure 
 % GNSS
 
 % RTK
+\subsection{Outlier rejection in Pose Graph Optimization > SC-Dist}
+\paragraph{\textnormal{Description of the parameter to control the loop detection in scan context supported with equations. Also provide overlayed trajectory of the trajectories of odom, pgo, and hba. In addition add error at the loop closure}}
+
+\section{Dynamic Objects removal}
+\textbf{TODO!!!!}
