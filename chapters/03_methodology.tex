@@ -3,51 +3,509 @@
 
 
 \section{System Overview}
-The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial odometry, Scan Context for loop closure detection, PGO using GTSAM for correcting drifts in the odometry, and finally hierarchical bundle adjustment(HBA) for global refinement of the map. The diagram shown in figure \ref{fig:overview} illustrates the integrated components used in system pipeline where the LIO and PGO can run in real-time but due to the computational and memory cost, HBA is run offline.
+The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial odometry, Scan Context for loop closure detection, PGO using GTSAM for correcting drifts in the odometry, and finally HBA for global refinement of the map. The diagram shown in figure \ref{fig:overview} illustrates the integrated components used in system pipeline where the LIO and PGO can run in real-time but due to the computational and memory cost, HBA is run offline. 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=\textwidth]{images/block-diagram.png}
+	\includegraphics[width=\textwidth]{images/block_diagram.pdf}
 	\caption{Block diagram of the overall system pipeline.}
 	\label{fig:overview}
 \end{figure}
-\paragraph{\textnormal{FAST-LIO2 outputs odometry and LiDAR scan frames at a frequency of 10-100Hz. The scan frames are updated according to the state estimation module in FAST-LIO2. Aggregating these scans using the odometry output can generate accurate map for short trajectories because LIO performs well for sequential registration of scans. However after long trajectory and revisiting the same locations the map diverges due to accumulated drifts in the odometry.}}
+\paragraph{\textnormal{FAST-LIO2 outputs odometry and updated LiDAR scan frames at a frequency of 10-100Hz. The scan frames are updated according to the state estimation module that includes prediction and update steps. Aggregating these scans using the odometry poses can generate accurate map for short trajectories because LIO performs well for sequential registration of scans. However after long trajectory and revisiting the same locations the map diverges due to accumulated drifts in the odometry.}}
+
+\begin{algorithm}
+	\caption{LiDAR-Inertial Odometry with Global Optimization}
+	\label{alg:lio_opt}
+	\begin{algorithmic}[1]
+		\State \textbf{Input:} $\mathcal{I}$ (IMU data), $\mathcal{L}$ (LiDAR scans)
+		\State \textbf{Output:} $\mathcal{M}^*$ (optimized map), $\mathcal{T}^*$ (refined trajectory)
+		
+		\State Initialize: $\mathcal{K}$(Keyframe set) $\gets \emptyset$, $\mathcal{G}$(Bipartite graph) $\gets \emptyset$
+		
+		\While{new $(\mathcal{I}_t, \mathcal{L}_t)$ available}
+		\State $\hat{\mathbf{T}}_t \gets \textsc{LIO}(\mathcal{I}_t, \mathcal{L}_t)$ \hspace{10em} \textcolor{gray}{\includegraphics[height=1em]{point_right.png} \textcolor{gray}FAST-LIO2}
+		
+		\If{\textsc{IsKeyframe}$(\hat{\mathbf{T}}_t)$}
+		\State $\mathcal{K} \gets \mathcal{K} \cup \{k_t\}$ \hspace{10em}\textcolor{gray}{\includegraphics[height=1em]{point_right.png} \textcolor{gray}Add keyframe}
+		\State $\mathcal{G} \gets \mathcal{G} \cup \{\mathcal{C}_{\text{odom}}(k_t)\}$ \hspace{7em} \textcolor{gray}{\includegraphics[height=1em]{point_right.png} \textcolor{gray} Add odometry constraint}
+		
+		\If{\textsc{DetectLoop}$(k_t, \mathcal{K})$}
+		\State $\mathcal{G} \gets \mathcal{G} \cup \{\mathcal{C}_{\text{loop}}(k_t, k_l)\}$ \hspace{5em} \textcolor{gray}{\includegraphics[height=1em]{point_right.png} \textcolor{gray}Add loop closure constraint}
+		\State $\{\mathbf{T}_i^*\} \gets \textsc{OptimizePoseGraph}(\mathcal{G})$
+		\EndIf
+		\EndIf
+		\EndWhile
+		
+		\State $\{\mathbf{T}_i^{**}, \mathcal{M}^*\} \gets \textsc{HBA}(\{\mathbf{T}_i^*\}, \mathcal{K})$
+		
+		\State \Return $\mathcal{M}^*$, $\mathcal{T}^* = \{\mathbf{T}_i^{**}\}$
+	\end{algorithmic}
+\end{algorithm}
 \paragraph{\textnormal{In the subsequent sections, detailed description of each of the components used in the system will be presented.}}
 
 \section{Description of FAST-LIO2}
-\paragraph{\textnormal{To output odometry at higher frequency, a state estimate module fuses both IMU and LiDAR inputs with an IKF. This involves prediction of the state based on IMU input only, then iteratively update it with LiDAR inputs. }}
+\paragraph{\textnormal{To output odometry at higher frequency, a state estimation module fuses both IMU and LiDAR inputs with an IKF. This involves prediction of the state based on IMU input only also called forward propagation, then iteratively update it with LiDAR inputs until the residual drops below a certain threshold. The state vector \textbf{x} is a 24-dimensional vector containing the state variables shown in Eq. (\ref{eq:flio_state}).}}
 
-\begin{figure}[H]
+\begin{equation}\label{eq:flio_state}
+	\begin{split}
+		\textbf{x} &\triangleq (^G\textbf{R}^T_{I}, ^G\textbf{P}^T_{I}, ^G\textbf{V}^T_{I}, \textbf{b}^T_{\omega}, \textbf{b}_{a}^{T}, ^G\textbf{g}^{T}, ^I\textbf{R}^T_{L}, ^I\textbf{P}^T_{L})^{T} \in \mathcal{M} \\
+		\mathcal{M} &\triangleq SO(3) \times \mathbb{R}^{15} \times SO(3) \times \mathbb{R}^{3}, \quad \dim(\mathcal{M}) = 24 \\
+		\textbf{u} &\triangleq \begin{bmatrix} \boldsymbol{\omega}_m^T & \textbf{a}_{m}^T \end{bmatrix}^T, \quad \textbf{w} \triangleq \begin{bmatrix} \textbf{n}_\omega^T & \textbf{n}_a^T & \textbf{n}_{b\omega}^T & \textbf{n}_{ba}^T \end{bmatrix}^T
+	\end{split}
+\end{equation}
+\paragraph{\textnormal{$^G\textbf{R}^T_{I}$,  $^G\textbf{P}^T_{I}$, and  $^G\textbf{V}^T_{I}$ denote orientation, position, the linear velocity of IMU in the global frame respectively. The $\textbf{b}^T_{\omega}$ is the bias in angular velocity, $\textbf{b}_{a}^{T}$ is bias in acceleration of IMU, and $^G\textbf{g}^{T}$ is gravity. $^I\textbf{R}^T_{L}$, and$^I\textbf{P}^T_{L}$ denote the extrinsic calibration between IMU and LiDAR sensors. The vector \textbf{u} represents IMU inputs, and \textbf{w} denotes the noise vector. }}
+%
+%\begin{figure}[H]
+%	\centering
+%	\includegraphics[width=\textwidth]{images/ikf.png}
+%	\caption{Prediction and update steps of IKF in FAST-LIO state estimation.}
+%	\label{fig:overview}
+%\end{figure}
+\subsection{Prediction Step}
+\paragraph{\textnormal{The continuous model is discretized at the IMU sampling period $\bigtriangleup t$ and the state is estimated using the forward propagation as shown in Eq. (\ref{eq:fwd_pgn}) where the function \textbf{f} is the state transition model as described in \cite{xu2022fast}. In the forward propagation, prediction step runs at frequency of $\frac{1}{\Delta t}$ until a (next) LiDAR scan comes in. The state and covariance matrix are propagated with the process noise \textbf{w} set to zero as in Eq. (\ref{eq:prediction}) where $Q_{i}$ is the noise covariance, $\mathbf{F}_{\bar{\mathbf{x}}_i}$ and $\mathbf{F}_{\mathbf{w}_i}$ are jacobians of \textbf{f} with respect to state and noise respectively. }}
+
+\begin{equation}
+	x_{i+1} = x_i \boxplus (\Delta t f(x_i, u_i, w_i))
+	\label{eq:fwd_pgn}
+\end{equation}
+\begin{equation}\label{eq:prediction}
+	\begin{aligned}
+		\hat{\mathbf{x}}_{i+1} &= \hat{\mathbf{x}}_i \boxplus \big(\Delta t \mathbf{f}(\hat{\mathbf{x}}_i, \mathbf{u}_i, \mathbf{0})\big) ; \quad \hat{\mathbf{x}}_0 = \bar{\mathbf{x}}_{k-1}, \\
+		\hat{\mathbf{P}}_{i+1} &= \mathbf{F}_{\bar{\mathbf{x}}_i} \hat{\mathbf{P}}_i \mathbf{F}_{\bar{\mathbf{x}}_i}^T + \mathbf{F}_{\mathbf{w}_i} \mathbf{Q}_i \mathbf{F}_{\mathbf{w}_i}^T ; \quad \hat{\mathbf{P}}_0 = \bar{\mathbf{P}}_{k-1},
+	\end{aligned}
+\end{equation}
+\subsection{Update Step}
+\paragraph{\textnormal{The update step corrects the predicted state by minimizing point-to-plane residuals between LiDAR points and the map. The residual $z^k_i$ of each LiDAR point $^L\textbf{p}_i$ is computed as its distance to a nearest local plane in the map. This residual Eq. (\ref{eq:residual}) quantifies the alignment error at the \textit{k}th iteration.}}
+\paragraph{\textnormal{Since the observation contains large number points($\approx$ 100K points), inverting a matrix in the dimension of observation is costly. Hence a new formulation Eq. (\ref{eq:kalman_gain}) of the kalman gain \textbf{K} that needs to invert a matrix in the dimension of state is derived. Using the residual $\mathbf{z}_k^\kappa $ and the \textbf{K}, the predicted state is updated as shown in Eq. (\ref{eq:state_update}).}}
+
+\begin{align}
+	 \quad \mathbf{z}_j^\kappa &= \mathbf{u}_j^T \left( {}^G\hat{\mathbf{T}}_{I_k}^\kappa {}^I\hat{\mathbf{T}}_{L_k}^\kappa {}^L\mathbf{p}_j - {}^G\mathbf{q}_j \right), \label{eq:residual} \\
+	 \quad \mathbf{K} &= \left( \mathbf{H}^T \mathbf{R}^{-1} \mathbf{H} + \mathbf{P}^{-1} \right)^{-1} \mathbf{H}^T \mathbf{R}^{-1}, \label{eq:kalman_gain} \\
+	 \quad \hat{\mathbf{x}}_k^{\kappa+1} &= \hat{\mathbf{x}}_k^\kappa \boxplus \left( -\mathbf{K} \mathbf{z}_k^\kappa - (\mathbf{I} - \mathbf{K} \mathbf{H}) (\mathbf{J}^\kappa)^{-1} (\hat{\mathbf{x}}_k^\kappa \boxminus \hat{\mathbf{x}}_k) \right). \label{eq:state_update}
+\end{align}
+
+\begin{algorithm}
+	\caption{State Estimation with IKF}
+		\label{alg:lio}
+	\begin{algorithmic}[1]
+		\State \textbf{Input} : Last output $\bar{\mathbf{x}}_{k-1}$ and $\bar{\mathbf{P}}_{k-1}$;
+		\State \hspace{2.5em} LiDAR raw points in current scan;
+		\State \hspace{2.5em} IMU inputs ($\mathbf{a}_m$, $\boldsymbol{\omega}_m$) during current scan.
+		\State Forward propagation to obtain state prediction $\hat{\mathbf{x}}_k$ and its covariance $\hat{\mathbf{P}}_k$ via Eq. (\ref{eq:prediction});
+		\State Backward propagation to compensate motion \cite{xu2021fastlio};
+		\State $\kappa = -1$, $\hat{\mathbf{x}}_k^{\kappa=0} = \hat{\mathbf{x}}_k$;
+		\Repeat
+		\State \hspace{1.5em} $\kappa = \kappa + 1$;
+		\State \hspace{1.5em} Compute $\mathbf{J}^\kappa$ as in \cite{xu2022fast} and $\mathbf{P} = (\mathbf{J}^\kappa)^{-1} \hat{\mathbf{P}}_k (\mathbf{J}^\kappa)^{-T}$;
+		\State \hspace{1.5em} Compute residual $\mathbf{z}_j^\kappa$ and Jacobian $\mathbf{H}_j^\kappa$ as in \cite{xu2022fast};
+		\State \hspace{1.5em} Compute the state update $\hat{\mathbf{x}}_k^{\kappa+1}$ via (\ref{eq:kalman_gain} and \ref{eq:state_update});
+		\Until{$\|\hat{\mathbf{x}}_k^{\kappa+1} \boxminus \hat{\mathbf{x}}_k^\kappa \| < \epsilon$;}
+		\State $\bar{\mathbf{x}}_k = \hat{\mathbf{x}}_k^{\kappa+1}, \quad \bar{\mathbf{P}}_k = (\mathbf{I} - \mathbf{K} \mathbf{H}) \mathbf{P}$;
+		\State Obtain the transformed LiDAR points $\{{}^{G}\bar{\mathbf{p}}_j\}$.
+		\State \textbf{Output}: Current optimal estimate $\bar{\mathbf{x}}_k$ and $\bar{\mathbf{P}}_k$;
+		\State \hspace{3.5em} The transformed LiDAR points $\{{}^{G}\bar{\mathbf{p}}_j\}$.
+	\end{algorithmic}
+\end{algorithm}
+\paragraph{\textnormal{Sequential state estimation with LIO suffers from drift over long trajectories due to inherent noise in the robot motion, sensor measurements, data association problems, or dynamics in the environment \cite{gupta2024icra}. Due to such a drift, when the robot revisits the same place, its belief may indicate a different location than it already knows. To overcome this problem, we proposed to integrate PGO with LIO so that such accumulated errors are corrected. PGO adds loop closure constraints to the robot poses when the same locations are revisited. To add loop closure constraints, a methodology to efficiently detect loop closure is required. In the next section, we discussed a robust loop closure detection methods and elaborated on one method we used in our research.}}
+\section{Loop Closure Detection}
+\paragraph{\textnormal{To maintain accurate pose estimate by mitigating global drift, loop closure via recognizing revisited places plays a vital role in SLAM with PGO. Therefore, a robust and efficient methodology for detecting loop closures is required to enforce a strong constraint in the graph. This enables us to have not only a better estimate of the current state and better model of the environment but also a better estimate of where the robot was in the past, since all the past poses will be updated as well.}}
+\paragraph{\textnormal{Even though having many loop closure constraints in the graph improves our estimate, special attention should be paid not include false positive constraints by incorrect association or perceptual aliasing in the graph because they will introduce a large error into the our estimation and it is difficult to remove them once they are added. It is better to miss a true loop closures than it is to add a false one. It is important to emphasize that loop closure relies on absolute measurements of the environment, typically obtained from sensors such as LiDAR, cameras, or other environmental sensing devices. Relative sensors, including the IMU or wheel encoders, are insufficient for performing loop closure. Therefore, using these relative sensors for detecting loops should be avoided.
+}}
+
+\subsection{Scan Context}
+
+\begin{figure}[h!]
 	\centering
-	\includegraphics[width=\textwidth]{images/ikf.png}
-	\caption{Prediction and update steps of IKF in FAST-LIO state estimation.}
-	\label{fig:overview}
+	\begin{subfigure}[b]{0.22\textwidth}
+		\frame{\includegraphics[width=\linewidth]{images/lc_source.png}}
+%			\put(10,90){\small \textbf{x}} % adjust coordinates
+%			\put(5,10){\small \textbf{y}} 
+
+		\caption{}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[b]{0.22\textwidth}
+		\frame{\includegraphics[width=\linewidth]{images/lc_target}}
+%			\put(10,90){\small \textbf{x}}
+%			\put(5,10){\small \textbf{y}}
+
+		\caption{}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[b]{0.22\textwidth}
+		\frame{\includegraphics[width=\linewidth]{images/lc_before_reg.png}}
+%			\put(10,90){\small \textbf{x}}
+%			\put(5,10){\small \textbf{y}}
+
+		\caption{}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[b]{0.22\textwidth}
+		\frame{\includegraphics[width=\linewidth]{images/lc_aligned.png}}
+%			\put(10,90){\small \textbf{x}}
+%			\put(5,10){\small \textbf{y}}
+
+		\caption{}
+	\end{subfigure}
+	
+	\caption{Loop detected with Scan Contex. a) current scan(source), b) target scan in the map, c) before alignment d) after alignment with ICP }
+	\label{fig:detected_loop}
 \end{figure}
 
-\paragraph{\textnormal{Sequential state estimation from odometry suffers from drift over long trajectories due to inherent noise in the robot motion, in the sensor measurements, data association problems, or/and dynamics in the environment \cite{gupta2024icra}. Due to such a drift, when the robot revisits the same place, its belief may indicate a different location than the one it already knows before. Efficiently detecting loop closure overcomes this problem by correcting the drift resulting in drastically improved state estimate by integrating pose constraint in the pose graph.}}
-\subsection{Loop closure}
-\colorbox{yellow}{Overview of Loop Closure Techniques and explanation about scan context showing sample loop detection result in rviz from scans.}
-\begin{itemize}
-	\item Feature-based methods (e.g., Scan Context, ORB-SLAM)....
-	\item Geometric-based methods() ICP, GTSAM-based approaches....
-	\item Learning-based approaches (e.g., deep learning for place recognition)
+
+\paragraph{\textnormal{As described in \ref{sec:related_work}, Scan Context is a novel spatial descriptor and matching algorithm designed for outdoor place recognition using a single 3D scan. It encodes the entire point cloud from a 3D scan into a 2D matrix representation of size $N_r \times N_s$ (figure \ref{fig:bin_encode}) where $N_r$ denotes the number of rings and $N_s$ is the number of sectors. These two variables parameters that can be tuned based on the environment. The radial resolution of the rings for LiDAR with maximum range set to $ L_{max} $ is $\frac{L_{max}}{N_r}$ and the angle of one sector is $\frac{2\pi}{N_s}$.}}
+
+\paragraph{\textnormal{A bin is represented as a set of points that belong to $\textit{i}th$ ring and $\textit{j}th$ sector of the 2D partition where $i \in [1, N_r]$ and $j \in [1, N_s]$. For each bin, the maximum height (z value) of points falling into the bin is stored. This way, an intensity image also known as \textit{Scan Context} of the point cloud in a single scan is generated as in Eq. (\ref{eq:scan_context}) where $\phi$ is a function that assigns the maximum height of the points in the given bin represented by $i$ and  $j$.}}
+
+\paragraph{\textnormal{Detecting loop closure requires measuring the similarity between scan contexts $I_q$ and $I_c$ of the query and candidate scan point clouds. This similarity score is the sum of the cosine distance between columns of same index in the scan contexts, $c^q_j$ and $c^c_j$, divided by $N_s$ for normalization Eq.( \ref{eq:cosine_distance}). In our implementation, we used values between $\textbf{0.1}$ to $\textbf{0.13}$ for $d(I^q, I^c)$ to make very strict loop closure detection to avoid false positive loops and outliers. Using a smaller value for this parameter may lead to missing important loop closures. Conversely, using a larger value can introduce false loops, which increases map divergence and the size of the graph, ultimately degrading performance. Therefore, careful tuning is essential to a balance between avoiding missed loops and preventing the inclusion of false ones. For more flexible and less strict values of the similarity score, we propose a further fitness score check using ICP or similar methods to enforce robustness. }}
+\begin{equation}
+	d(I^q, I^c) = \frac{1}{N_s} \sum_{j=1}^{N_s} \left(1 - \frac{c_j^q \cdot c_j^c}{\|c_j^q\| \, \|c_j^c\|} \right)
+	\label{eq:cosine_distance}
+\end{equation}
+
+\begin{figure}[h!]
+	\centering
+	\begin{tikzpicture}[scale=0.09] % 1 unit = 1 meter, scaled down
+		
+		% Draw grid (20m steps in 100x100 area)
+		\draw[step=10,gray,very thin] (0,0) grid (70,70);
+		
+		% X-axis ticks and label
+		\foreach \x in {0,10,...,70} {
+			\draw (\x,0) -- (\x,-2) node[below] {\x};
+		}
+		\node at (35,-12) {x(m)};
+		
+		% Y-axis ticks and label
+		\foreach \y in {0,10,...,70} {
+			\draw (0,\y) -- (-2,\y) node[left] {\y};
+		}
+		\node[rotate=90] at (-12,35) {y(m)};
+		
+		% Place the image centered at (50,50)
+		\node at (35,35) {\includegraphics[width=5.5cm]{sc_bin.png}};
+		
+	\end{tikzpicture}
+	\caption{A 2D bin encoding of the 3D point cloud in a single scan}
+	\label{fig:bin_encode}
+\end{figure}
+\paragraph{\textnormal{The column-wise similarity scoring of scan contexts is effective for dynamic objects, however columns in the scan context for the same place can be shifted due to a change in the view point of the LiDARR sensor. To alleviate this problem, distance between query scan context and all possible column-shifted scan contexts from the original candidate scan context is computed and the shift number $n$ that gives the minimum distance is used as initial guess for alignment Eq.( \ref{eq:col_shift}).  }}
+
+
+\begin{equation}
+	I = (a_{ij}) \in \mathbb{R}^{N_r \times N_s}, \quad a_{ij} = \phi(\mathcal{P}_{ij})
+	\label{eq:scan_context}
+\end{equation}
+
+
+
+\begin{equation}
+	\begin{aligned}
+		D(I^q, I^c) &= \min_{n \in [N_s]} d(I^q, I^c_n), \\
+		n^* &= \arg\min_{n \in [N_s]} d(I^q, I^c_n)
+	\end{aligned}
+\label{eq:col_shift}
+\end{equation}
+
+\begin{algorithm}[H]
+	\caption{Loop Detection with Scan Context}
+	\begin{algorithmic}[1]
+		\State \textbf{Input:} Current descriptor $I_q $, current key $k_q$
+		\State \textbf{Output:} Loop ID $n^*$ and yaw difference $\Delta \theta$
+		\If{number of stored descriptors $< N_{\text{exclude}} + 1$}
+		\State \Return $(-1, 0.0)$ [avoid loop with recent scans]
+		\EndIf
+		\If{tree update required (every $T$ iterations to save computation)}
+		\State Exclude recent $N_{\text{exclude}}$ keys from search set
+		\State Build KD-tree on historical keys
+		\EndIf
+		\State Use KD-tree to retrieve top-$K$ candidates $\{k_n\}$ closest to $k_q$
+		\For{each candidate $n \in \{k_n\}$}
+		\State Compute pairwise scan context distance $d(I_q, I_n)$ with optimal $\Delta \theta$
+		\EndFor
+		\State Select best match using \ref{eq:col_shift}
+		\If{$D^* < \tau_{\text{SC}}$}
+		\State \Return $(n^*, \Delta \theta)$
+		\Else
+		\State \Return $(-1, 0.0)$
+		\EndIf
+	\end{algorithmic}
+\label{alg:sc}
+\end{algorithm}
+
+
+\paragraph{\textnormal{The number of top candidate scan contexts $K$ in algorithm \ref{alg:sc} is determined by the user and the candidate with the minimum distance to the query descriptor satisfying the acceptable threshold, $\tau_{\text{SC}}$, is chosen as revisited place. Figure \ref{fig:detected_loop} shows the query(green) and candidate(red) scan satisfying the acceptable similarity threshold aligned with the initial guess $\Delta \theta$, and ICP. }}
+\begin{figure}
 	
-\end{itemize}
+\resizebox{\textwidth}{!}{ % Scale to fit page width
+	\begin{tikzpicture}[node distance=1cm and 1.5cm]
+		
+		% Description blocks
+		\node[block] (pc) {3D Point cloud\\ (of a single scan)};
+		\node[block, right=of pc] (sc) {Scan Context};
+		
+		% Group 1: Description
+		\node[group, fit=(pc)(sc), desc] (descgroup) {};
+		\node[anchor=west, text=orange] at ([xshift=-0.2cm,yshift=0.2cm]descgroup.north west) {1. Description};
+
+		
+		% Ring key to KD tree pipeline
+		\node[block, above=of sc] (rk) {Ring key};
+		\node[block, right=of rk] (kd) {KD tree};
+		\node[block, right=of kd] (top) {Top similar\\places};
+		
+		% Candidate scan contexts
+		\node[block, below=of top] (cand) {Candidate Scan Contexts\\in the database};
+		
+		% Loop detection arrow
+		\node[below=of cand, yshift=1.2cm] (loop) {};
+		
+		% Arrows
+		\draw[arrow] (pc) -- (sc);
+		\draw[arrow] (sc.north) -- (rk.south);
+		\draw[arrow] (rk) -- (kd);
+		\draw[arrow] (kd) -- (top);
+		\draw[arrow] (top) -- (cand);
+		\path (sc) -- (cand) coordinate[pos=0.5] (midscand); % midpoint
+		\draw[bluearr] (sc) -- (cand);
+		\draw[bluearr] (cand) -- (sc);
+		\draw[bluearr] (midscand) -- ++(0,-2.0) node[below, text width=5cm, align=center] {Loop detection};
+
+		
+		% Group 2-1: NN Search
+		\node[group, fit=(rk)(kd)(top), nnsearch, inner sep=0.15cm] (nn) {};
+		\node[anchor=west, text=red] at ([xshift=3.5cm,yshift=0.2cm]nn.north west) {2-1. Nearest Neighbor Search};
+
+		
+		% Group 2-2: Pairwise Similarity
+		\node[group, fit=(cand)(sc), pairwise, inner sep=0.15cm] (pair) {};
+		\node[anchor=west, text=teal] at ([xshift=3.5cm,yshift=0.2cm]pair.north west) {2-2. Pairwise Similarity Score};
+
+		
+		% Group 2: Search
+		\node[group, fit=(nn)(pair), overall, inner sep=0.5cm] (searchgroup) {};
+		\node[anchor=west, text=blue] at ([xshift=-0.2cm,yshift=0.2cm]searchgroup.north west) {2. Search};
+		
+	\end{tikzpicture}
+}
+\caption{A point cloud from a single 3D scan is encoded into a Scan Context. An $N_{r}$ dimensional ring key is then extracted and used to build a KD-tree for retrieving nearest candidates. These candidates are compared with the query, and the closest one that meets the acceptance threshold is selected as a loop closure\cite{kim2018scan}.}
+\end{figure}
+
+\section{ICP for computing loop closure constraint}
+\paragraph{\textnormal{ICP \cite{4767965} is a widely used algorithm for rigid registration of 3D point clouds. It operates by iteratively refining the alignment between a source and a target point cloud by minimizing the sum of squared distances between corresponding points. In each iteration, it first identifies the closest points between the two clouds, estimates the best-fit rigid transformation (rotation and translation), applies this transformation to the source, and repeats the process until convergence. The optimal rotation R is computed using singular value decomposition (SVD) \cite{golub1971singular} of the cross covariance matrix of the $\textbf{H}$  shown in Eq. (\ref{eq:matrix_h}) of the corresponding points where $x_0$ and $y_0$ are the weighted mean of point clouds X, and Y respectively. The basic alignment problem of point sets $X$ and $Y$ is shown in Eq. (\ref{eq:icp_align}) where $x_i$ and $y_j$ are corresponding points that belong to 3D point clouds $X$ and $Y$ respectively. }}
+\begin{equation}
+	(\mathbf{R}^*, \mathbf{t}^*) = \arg\min_{\mathbf{R}, \mathbf{t}} \sum_{(i,j)\in \mathcal{C}} \left\| \mathbf{y}_i - \mathbf{R} \mathbf{x}_j - \mathbf{t} \right\|^2
+	\label{eq:icp_align}
+\end{equation}
+
+\begin{equation}
+	\mathbf{H} = \sum (y_i - y_0)(x_j - x_0)^\top, \quad
+	\mathbf{U} \mathbf{D} \mathbf{V}^\top = \mathrm{SVD}(\mathbf{H}), \quad 
+	\mathbf{R^*} = \mathbf{U} \mathbf{V}^\top, \quad 
+	\mathbf{t^*} = \mathbf{y}_0 - \mathbf{R} \mathbf{x}_0
+	\label{eq:matrix_h}
+\end{equation}
+\paragraph{\textnormal{Point Cloud Libarary (PCL), among others, provides implementation for several variants of ICP algorithm. We used the point-to-point implementation of ICP from the PCL library. After a pair of scans corresponding to the detected loop are found, we run the PCL's ICP with the parameters shown in table \ref{tab:icp_symbolic_params}. It is important to tune these parameters properly for optimal alignment of the points clouds in the detected scans that correspond to loops. However, in our method, since the loop closure detection module robustly detects loops with $\Delta \theta$ as initial guess, these parameters shown in \ref{tab:icp_symbolic_params} do not require excessive tuning. For short-range loop closure and indoor environments, tuning these parameters is required accordingly. The transformation ($\mathbf{R^*}$ and $\mathbf{t^*}$) that aligns the two scans corresponding to the loop is added as \textit{loop constraint} to the factor graph.}}
+\begin{table}[htbp]
+	\centering
+	\caption{Parameters for ICP (Point-to-Point)}
+	\begin{tabular}{|c|l|c|}
+		\hline
+		\textbf{Symbol} & \textbf{Description} & \textbf{Value} \\
+		\hline
+		$d_{\text{max}}$ & Maximum correspondence distance & 150 m \\
+		$N_{\text{iter}}$ & Maximum number of iterations & 50 \\
+		$\epsilon_{\text{trans}}$ & Minimum transformation epsilon (convergence) & $1 \times 10^{-6}$ \\
+		$\epsilon_{\text{fit}}$ & Euclidean fitness epsilon (convergence) & $1 \times 10^{-6}$ \\
+		$N_{\text{RANSAC}}$ & RANSAC iterations for outlier rejection & 0 \\
+		$\tau_{\text{RANSAC}}$ & RANSAC outlier rejection threshold & 0.05 m \\
+		\hline
+	\end{tabular}
+	\label{tab:icp_symbolic_params}
+\end{table}
+\section{Optimization with Pose Graph}
+\paragraph{\textnormal{By leveraging odometry constraints derived from LIO and loop closure constraints obtained through ICP alignment, we construct a pose graph that is subsequently optimized (see algorithm \ref{alg:lio_opt}) to minimize a global error function shown in Eq. (\ref{eq:Fx}). In this framework, odometry constraints encode the relative motion estimates (transformation) between temporally adjacent poses, while loop closure constraints introduce corrections by identifying correspondences between non-consecutive poses, thereby mitigating accumulated drift and enhancing global consistency. Minimization of the global error function constructs configuration of the robot poses that best satisfies the constraints \cite{grisetti2010tutorial}.  }}
+
+\begin{equation}
+	\mathbf{e}_{ij}(\mathbf{x}_i, \mathbf{x}_j) = \mathbf{z}_{ij} - \hat{\mathbf{z}}_{ij}(\mathbf{x}_i, \mathbf{x}_j).
+	\label{eq:pgo_error_fun}
+\end{equation}
+
+\begin{equation}
+\mathbf{F}(\mathbf{x}) = \sum_{\langle i, j \rangle \in \mathcal{C}} 
+\underbrace{\mathbf{e}_{ij}^T \mathbf{\Omega}_{ij} \mathbf{e}_{ij}}_{\mathbf{F}_{ij}}
+	\label{eq:Fx}
+\end{equation}
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+	node distance=3cm,
+	Xnode/.style={draw, circle, minimum size=10mm, fill=cyan!30, thick},
+	Znode/.style={draw, circle, minimum size=10mm, fill=pink!30, thick},
+	bigellipse/.style={draw, ellipse, minimum width=4cm, minimum height=2cm, fill=green!20, inner sep=0},
+	label/.style={draw=none, rectangle, inner sep=2pt},
+	arrow/.style={->, >=Stealth, thick}
+	]
+	
+	% Nodes
+	\node[Xnode] (X_i) {$x_i$};
+	\node[Xnode] (X_j) [right=4cm of X_i] {$x_j$};
+	\node[Znode] (Z_ij) [above right=2cm and 4.0cm of X_i] {$\mathbf{z}_{ij}$};
+
+	% Big dashed ellipse (Omega) with label INSIDE
+	\begin{scope}[on background layer]
+		\node[bigellipse, fit=(Z_ij)] (omega) {};
+	\end{scope}
+	
+	% Theta label
+	\node[label] at ([yshift=6mm, xshift=-8mm]omega.center) {$\Omega_{ij}$};  % Adjust yshift as needed
+\node[label, below right=0.9cm and -0.2cm of Z_ij] {$\mathbf{e}_{ij}(\mathbf{x}_i, \mathbf{x}_j)$};
+
+	
+	% Edges
+	\draw[arrow] (X_i) -- node[midway, below] {$\hat{\mathbf{z}}_{ij}$} (X_j);  % Straight solid arrow with label
+	\draw[arrow, dashed] (X_i) -- (Z_ij);  % Dashed arrow X_i → Z_ij
+	\draw[arrow, dashed] (Z_ij) -- (X_j);  % Dashed arrow Z_ij → X_j
+	
+\end{tikzpicture}
+\caption{Error between actual measurement $\mathbf{z}_\textit{ij}$ and expected measurement $\hat{\mathbf{z}}_\textit{ij}$}
+\end{figure}
+
+\paragraph{\textnormal{For two nodes $\mathit{i}$ and $\mathit{j}$ in the pose graph, the function that computes the difference between the actual measurement $\mathbf{z}_\mathit{ij}$ and expected measurement $\hat{\mathbf{z}}_\mathit{ij}$ is denoted as in Eq. (\ref{eq:pgo_error_fun}) \cite{grisetti2010tutorial}. For a set $\mathit{C}$ of pairs of indices which have a constraint (observation) $\mathbf{z}_{\mathit{ij}}$  with information matrix $\mathbf{\Omega}_{\mathit{ij}}$, maximizing the PDF Eq. (\ref{eq:MAP}) corresponds to finding the configuration of nodes $\mathbf{x}^*$ that minimizes the negative log likelihood  $\textbf{F(x)}$ of all observations as in Eq. (\ref{eq:neg_log}). }}
+
+\begin{equation}
+	\mathbf{x}^* = \arg\min_{\mathbf{x}} \mathbf{F}(\mathbf{x}).
+	\label{eq:neg_log}
+\end{equation}
+
+\paragraph{\textnormal{The solution to Eq. (\ref{eq:neg_log}) can be found utilizing popular optimization methods such as Gauss-Newton \cite{wang2012gauss} or the Levenberg-Marquardt (LM) \cite{roweis1996levenberg} algorithms. }}
 
 
-\paragraph{\textnormal{Gupta et al. proposed a robust loop closure detection pipeline for LiDAR-based SLAM that effectively handles variations in LiDAR sensors, including different scanning patterns, fields of view, and resolutions. Their approach generates local maps from consecutive LiDAR scans and employs a ground alignment module to ensure consistency across diverse motion profiles. A key feature of their method is the use of density-preserving Bird’s Eye View (BEV) projections, from which ORB feature descriptors are extracted for efficient place recognition. These descriptors are stored in a binary search tree, enabling fast retrieval while mitigating perceptual aliasing through self-similarity pruning.}}
+\section{Global refinement using HBA}
+\label{sec:hba}
+\paragraph{\textnormal{Minimization of the global error function Eq.(\ref{eq:Fx}) generates best estimate of the robot poses that best fit the measurements under Gaussian assumption of the relative pose estimation. This minimization corrects the drift in the LiDAR odometry and inconsistency in the map. However, due to loop closure inaccuracy and optimization of only relative pose, there would still be small misalignments in the map after PGO. As discussed in section \ref{sec:lba}, LBA works to minimize the overall point-to-plane distance to optimize the mapping consistency. However this optimization process requires $\mathbf{O}(N^3)$ time to solve where $N$ is the number of LiDAR poses involved in the computation. To address this issue, Xiyuan Liu et al. \cite{himstedt2014large} proposed HBA method that globally optimizes the map consistency maintaining the efficiency of time consumption.
+}}
 
-% Hardware
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=\textwidth]{images/HBA.pdf}
+	\caption{Pyramid structure of the HBA with layer number l=3, stride size s=3 and window size w=6.}
+	\label{fig:hba_arc}
+\end{figure}
 
-% Datasets
+\paragraph{\textnormal{The architecture of HBA, as shown in figure \ref{fig:hba_arc}, constructs pyramid structure of the frame poses. The refinement process involves two key steps. A bottom-up approach that performs BA within local window hierarchically from bottom layer(local BA) to the top layer(global BA).  Since the number frame poses in each local window is small, this approach of employing local BA improves the time complexity by leveraging parallel computation for each local BA. However, this bottom-up process does not take into account the features that are common across different local windows and this causes inaccuracy. To mitigate this issue, a top-down process that constructs PGO from top to bottom layers and distributes the errors is used. 
+}}
 
 
-% LiDAR
+\subsection{Bottom-up Process}
+\paragraph{\textnormal{For \textit{j}-th LiDAR frame $\mathbb{F}^i_j$ in the \textit{i}-th layer and its pose $\mathbf{T}^i_j = (\mathbf{R}^i_j, \mathbf{t}^i_j), \text{ with } \mathbf{R}^i_j \in SO(3) \text{ and } \mathbf{t}^i_j \in \mathbb{R}^3$, its points are represented in the local LiDAR frame and $\mathbf{T}^i_j$ is in global frame. A local BA is performed on the frames in each local window of size $\mathit{w}$ and stride $\mathit{s}$ in the bottom-up process given that the initial pose trajectory is provided. This local BA optimizes the relative poses between the first frame and the other frames within a local window. After optimization, a new key frame for the next layer Eq. (\ref{eq:nw_kf}) is created for each window by aggregating all the frames inside it. The pose of this key frame, Eq. (\ref{eq:nw_ps}), is computed by sequentially multiplying the optimized poses of the individual LiDAR frames in the window. This process is repeated from the bottom layer to top layer of the pyramid structure. This local BA forms relative constraints(factors) between the frames within the window. For keyframes that are appear in different windows, multiple relative constraints from different windows will constructed.
+}}
 
-% GNSS
 
-% RTK
-\subsection{Outlier rejection in Pose Graph Optimization > SC-Dist}
-\paragraph{\textnormal{Description of the parameter to control the loop detection in scan context supported with equations. Also provide overlayed trajectory of the trajectories of odom, pgo, and hba. In addition add error at the loop closure}}
+\begin{equation}
+	\mathbf{F}^{i+1}_j \triangleq \bigcup_{k=0}^{w-1} \left( \mathbf{T}^{i*}_{s,j,s,j+k} \cdot \mathbf{F}^i_{s,j+k} \right)
+	\label{eq:nw_kf}
+\end{equation}
 
-\section{Dynamic Objects removal}
-\textbf{TODO!!!!}
+
+\paragraph{\textnormal{The total time consumption of HBA depends on the number of layers $\mathit{l}$, total number of LiDAR frames $N$, window size $\mathit{w}$, stride  number $\mathit{s}$, and the number of threads $\mathit{n}$ used for parallel processing. The optimal number of layers $\mathit{l^*}$ of the pyramid is obtained as in Eq.(\ref{eq:opt_layer}).
+}}
+
+\begin{equation}
+	l^* = \left\lfloor \frac{1}{2} \log_s \left( \frac{3N^2 (s^3 - s) n}{w^3} \right) \right\rfloor
+	\label{eq:opt_layer}
+\end{equation}
+\begin{equation}
+	\mathbf{T}^{i+1}_j = \mathbf{T}^{i*}_{s,j} = \prod_{k=1}^{j} \mathbf{T}^{i*}_{s,k-s,s,k}
+	\label{eq:nw_ps}
+\end{equation}
+
+\subsection{Top-Down Process}
+\paragraph{\textnormal{In the top-down process,see figure \ref{fig:bu-td}, pose graph is constructed using the frame poses as variables and relative pose between adjacent frames as factors in each layer of the pyramid. Finally PGO is used to solve the pose graph by LM using GTSAM \cite{gtsam}. 
+}}
+
+
+\begin{figure}[ht]
+	\centering
+	\begin{tikzpicture}[
+		box/.style={draw, minimum width=2.2cm, minimum height=0.5cm, align=center, fill=white, font=\footnotesize},
+		proc/.style={draw, minimum width=2cm, minimum height=0.5cm, align=center, fill=white, font=\footnotesize},
+		redproc/.style={draw=red, text=red, minimum width=1.3cm, minimum height=0.4cm, font=\scriptsize, align=center},
+		arrow/.style={-Latex, thick},
+		dashedarrow/.style={-Latex, thick, dashed},
+		dashedline/.style={dashed, thick},
+		layer/.style={minimum width=3cm, minimum height=0.8cm},
+		decision/.style={diamond, draw, aspect=2, inner sep=0pt, align=center, font=\scriptsize},
+		mylabel/.style={font=\bfseries\scriptsize, text centered}
+		]
+		
+		\node[rectangle, fill=yellow!10, minimum width=5.5cm, minimum height=6cm, anchor=north west, rounded corners=5pt] (leftbg) at (-1,0) {};
+		\node[rectangle, fill=blue!10, minimum width=10.5cm, minimum height=6cm, anchor=north west, rounded corners=5pt] (rightbg) at (4.5,0) {};
+		
+		\node[mylabel, anchor=north west, text=orange] at (-1,0) {Bottom-Up Process};
+		\node[mylabel, anchor=north west, text=cyan] at (4.5,0) {Top-Down Process};
+		
+		\node[box] (first) at (0.5, -5.5) {First Layer\\Frames/Poses};
+		\node[redproc, above=0.3cm of first] (lba1) {Local BA};
+		
+		\node[box, above=1.2cm of first] (second) {Second Layer\\Frames/Poses};
+		\node[redproc, above=0.3cm of second] (lba2) {Local BA};
+		
+		\node[box, above=1.2cm of second] (top) {Top Layer\\Frames/Poses};
+		\node[redproc, right=0.3cm of top] (gba) {Global BA};
+		
+		\node[draw, align=center, below=0.9cm of first, rounded corners=6pt, font=\footnotesize] (init) {Initial LiDAR\\ Poses/Frames};
+		
+		\draw[arrow] (init) -- (first);
+		\draw[arrow] (first) -- (lba1);
+		\draw[arrow] (lba1) -- (second);
+		\draw[arrow] (second) -- (lba2);
+		\draw[arrow] (lba2) -- (top);
+		\draw[arrow] (top) -- (gba);
+		
+
+		\node[box, minimum width=3.2cm, minimum height=1.2cm, right=3.2cm of top] (opt_top) {Optimized Top Layer\\Poses/Hessian};
+		\node[box, minimum width=3.2cm, minimum height=1.2cm, below=0.8cm of opt_top] (opt_second) {Optimized Second Layer\\Poses/Hessians};
+		\node[box, minimum width=3.2cm, minimum height=1.2cm, below=0.8cm of opt_second] (opt_first) {Optimized First Layer\\Poses/Hessians};
+		
+		\draw[arrow] (gba) -- (opt_top);
+		\draw[thick] (opt_top) -- (opt_second);
+		\draw[thick] (opt_second) -- (opt_first);
+		
+				
+		\draw[dashedarrow] (lba1.east) -- ++(1,0) -- ++(0,-0.65) -- (opt_first.west);
+		\draw[dashedarrow] (lba2.east) -- ++(1,0) -- ++(0,-0.8) -- (opt_second.west);
+		
+		\node[box, rotate=90, minimum width=5cm, minimum height=0.4cm, font=\footnotesize] (posegraph) at (11.1, -3.2) {Pose Graph};
+		\node[box, rotate=90, minimum width=5cm, minimum height=0.4cm, font=\footnotesize] (pgo) at (12.0, -3.2) {Pose graph optimization};
+
+		
+		\node[decision] (residual) at (13.8, -3.2) {Converged?};
+		\node[draw, below=1.1cm of opt_first, rounded corners=6pt, align=center, font=\footnotesize] (output) {Optimized LiDAR Poses +\\Globally Consistent Map};
+		
+		% Solid horizontal arrows to posegraph
+		\draw[arrow] (opt_top.east) -- ++(1.0,0) node[above, font=\tiny] {Top layer factors} -- ++(1.0,0) node[coordinate] (ptop) {} -- (posegraph.north |- ptop);
+		\draw[arrow] (opt_second.east) -- ++(1.0,0) node[above, font=\tiny] {2nd layer factors} -- (posegraph.north |- opt_second.east);
+		\draw[arrow] (opt_first.east)  -- ++(1.0,0) node[above, font=\tiny] {1st layer factors} -- ++(1.0,0) node[coordinate] (pfirst) {} -- (posegraph.north |- pfirst);
+		
+		
+		
+		% Midpoints between optimized layer boxes
+		\path (opt_top) -- (opt_second) coordinate[pos=0.6] (mid_top_second);
+		\path (opt_second) -- (opt_first) coordinate[pos=0.6] (mid_second_first);
+		
+		% Dashed arrows from midpoints to posegraph
+		\draw[dashedarrow] (mid_top_second) -- ++(4.1, 0) node[above, font=\scriptsize, midway] {same node constraints};
+		\draw[dashedarrow] (mid_second_first) -- ++(4.1, 0) node[above, font=\scriptsize, midway] {same node constraints};
+	 
+
+		\draw[arrow] (posegraph.south) -- (pgo.north);
+		\draw[arrow] (pgo.south) -- (residual.west);
+		\draw[arrow] (residual.east) -- ++(0.4,0) |- (output.east);
+		\draw[thick] (residual.south) -- ++(0,-2.7) -| ([yshift=-0.1cm]init);
+		
+		\node[anchor=north west, font=\tiny] at ([xshift=2pt,yshift=-2.2pt]residual.east) {Yes};
+		\node[anchor=north, font=\tiny] at ([xshift=-6pt]residual.south) {No};
+	\end{tikzpicture}
+	\caption{HBA optimization: Bottom-Up and Top-Down Process}
+	\label{fig:bu-td}
+\end{figure}

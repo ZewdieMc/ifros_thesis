@@ -299,6 +299,36 @@
 \RequirePackage{amsthm}
 \RequirePackage{amsmath}
 \RequirePackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{pifont}
+\usepackage[percent]{overpic}
+\usepackage{svg} % SVG support
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usepackage{url}
+\usepackage{diagbox}
+\usetikzlibrary{calc}
+% \usepackage{emoji}
+\usetikzlibrary{positioning, shapes, shapes.geometric, arrows.meta, fit, backgrounds} % <-- Added 'fit' here
+\tikzset{
+  block/.style = {draw, rectangle, minimum height=1.2cm, minimum width=2.8cm, align=center},
+  arrow/.style = {thick, -{Latex[length=3mm]}},
+  group/.style = {draw, dashed, rounded corners, inner sep=0.3cm},
+  desc/.style = {orange, thick, dashed},
+  nnsearch/.style = {red!60!black, thick, dashed},
+  pairwise/.style = {green!60!black, thick, dashed},
+  overall/.style = {blue, thick, dotted},
+  bluearr/.style = {blue, thick, -{Latex[length=3mm]}}
+}
+
+% Define styles
+\tikzstyle{token} = [circle, draw=black, fill=white, minimum size=6mm]
+\tikzstyle{feature} = [diamond, draw=black, fill=blue!20, minimum size=6mm]
+\tikzstyle{attention} = [->, thick, red, dashed]
+\tikzstyle{connection} = [->, thick]
 \DeclareMathAlphabet{\mathpzc}{OT1}{pzc}{m}{it}
 % ------------------------------
 

@@ -2,9 +2,10 @@
 	%parspace, % Add vertical space between paragraphs
 	noindent, % No indentation of first lines in each paragraph
 	nohyp, % No hyphenation of words
-	%twoside, % Double sided format
+%	twoside, % Double sided format
 	%draft, % Quicker draft compilation without rendering images
 	%final, % Set final to hide todos
+	tikz,border=10pt
 ]{elteikthesis}[2024/04/26]
 
 % \pdfobjcompresslevel=0 % Disable object compression
@@ -14,11 +15,12 @@
 %\usepackage[newfloat]{minted}
 
 % Document's metadata
-\title{LiDAR-Based Mapping Module\\For Autonomous Navigation } % title
+\title{Globally Consistent Mapping in Indoor and Outdoor\\
+	Environments Using Hybrid LiDAR SLAM } % title
 \date{2025} % year of defense
 
 % Author's metadata
-\author{Zewdie-Habtie Sisay}
+\author{Zewdie Habtie Sisay}
 \degreetitle{MSc Intelligent Field Robotic Systems (IFRoS)}
 
 % Superivsor(s)' metadata
@@ -102,8 +104,27 @@ name={odometry},
 \newacronym{loam}{LOAM}{LiDAR Odometry and Mapping}
 \newacronym{lio}{LIO}{LiDAR-Inertial Odometry}
 \newacronym{cnn}{CNN}{Convolutional Neural Network}
+\newacronym{cl}{CNN}{Customer Level}
 
-
+\makeatletter
+\newcount\ALG@printindent@tempcnta
+\def\ALG@printindent{%
+	\ifnum \theALG@nested>0% is there anything to print
+	\ALG@printindent@tempcnta=1
+	\loop
+	\pgfmathtruncatemacro{\x}{(\ALG@printindent@tempcnta-1)*10pt}%
+	\tikz[overlay,remember picture] \draw ([xshift=\x]indent\the\ALG@printindent@tempcnta-|0,0) -- ++(0,-1.5ex);%
+	\advance \ALG@printindent@tempcnta 1
+	\ifnum \ALG@printindent@tempcnta<\numexpr\theALG@nested+1\relax
+	\repeat
+	\fi
+}%
+\algrenewcommand\alglinenumber[1]{%
+	\tikz[overlay,remember picture] \coordinate (indent#1) at (0,0);%
+	\footnotesize #1:%
+}
+\algrenewcommand\textproc{\normalfont\rmfamily}
+\makeatother
 
 % The document
 \begin{document}
@@ -119,13 +140,18 @@ name={odometry},
 \newcommand{\reffig}[1]{(Fig. \ref{fig:#1})}
 \newcommand{\refch}[1]{(Chapter \ref{ch:#1})}
 
-
+\newcommand{\cmark}{\ding{51}} % Checkmark ✓
+\newcommand{\xmark}{\ding{55}} % Cross ✗
 
 % Title page (mandatory)
 \maketitle
 % Topic declaration page (mandatory) - can also be attached instead
-\includepdf[pages={2,3}]{other/Z_signed.pdf}
+%\includepdf[pages={2,3}]{other/Z_signed.pdf}
 
+% Acknowledgements (optional) - in case your thesis received funding or would like to express special thanks to someone
+\chapter*{\acklabel}
+\addcontentsline{toc}{chapter}{\acklabel}
+\cleardoublepage
 % Table of contents (mandatory)
 \tableofcontents
 \cleardoublepage
@@ -146,7 +172,7 @@ name={odometry},
 \input{chapters/05_conclusion}
 \cleardoublepage
 
-% \input{samples_en/intro.tex}
+% \input{chapters/06_motivation}
 % \cleardoublepage
 
 % \input{samples_en/user.tex}
@@ -158,9 +184,6 @@ name={odometry},
 % \input{samples_en/sum.tex}
 % \cleardoublepage
 
-% Acknowledgements (optional) - in case your thesis received funding or would like to express special thanks to someone
-% \chapter*{\acklabel}
-% \addcontentsline{toc}{chapter}{\acklabel}
 % In case your thesis received financial support from a project or the university, it is usually required to indicate the proper attribution in the thesis itself. Special thanks can also be expressed towards teachers, fellow students and colleagues who helped you in the process of creating your thesis.
 
 % Appendices (optional) - useful for detailed information in long tables, many and/or large figures, etc.
