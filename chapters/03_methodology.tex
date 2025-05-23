@@ -3,11 +3,11 @@
 
 
 \section{System Overview}
-The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial odometry, Scan Context for loop closure detection, PGO using GTSAM for correcting drifts in the odometry, and finally HBA for global refinement of the map. The diagram shown in figure \ref{fig:overview} illustrates the integrated components used in system pipeline where the LIO and PGO can run in real-time but due to the computational and memory cost, HBA is run offline. 
+The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial odometry, Scan Context for loop closure detection, PGO using Georgia Tech Smoothing and Mapping (GTSAM \cite{gtsam}) for correcting drifts in the odometry, and finally HBA for global refinement of the map. The diagram shown in figure \ref{fig:overview} illustrates the integrated components used in system pipeline where the LIO and PGO can run in real-time but due to the computational and memory cost, HBA is run offline. 
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=\textwidth]{images/block_diagram.pdf}
-	\caption{Block diagram of the overall system pipeline.}
+	\caption{Block diagram of the proposed system pipeline.}
 	\label{fig:overview}
 \end{figure}
 \paragraph{\textnormal{FAST-LIO2 outputs odometry and updated LiDAR scan frames at a frequency of 10-100Hz. The scan frames are updated according to the state estimation module that includes prediction and update steps. Aggregating these scans using the odometry poses can generate accurate map for short trajectories because LIO performs well for sequential registration of scans. However after long trajectory and revisiting the same locations the map diverges due to accumulated drifts in the odometry.}}
@@ -43,7 +43,7 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 \paragraph{\textnormal{In the subsequent sections, detailed description of each of the components used in the system will be presented.}}
 
 \section{Description of FAST-LIO2}
-\paragraph{\textnormal{To output odometry at higher frequency, a state estimation module fuses both IMU and LiDAR inputs with an IKF. This involves prediction of the state based on IMU input only also called forward propagation, then iteratively update it with LiDAR inputs until the residual drops below a certain threshold. The state vector \textbf{x} is a 24-dimensional vector containing the state variables shown in Eq. (\ref{eq:flio_state}).}}
+\paragraph{\textnormal{FAST-LIO2 is a robust and computationally efficient LiDAR-inertial odometry system that tightly fuses LiDAR feature points with IMU data using an IEKF. This enables reliable navigation even in challenging scenarios involving fast motion, sensor noise, or cluttered environments where traditional methods may fail due to degeneracy.To output odometry at higher frequency, a state estimation module fuses both IMU and LiDAR inputs with an IEKF. This involves prediction of the state based on IMU input only also called forward propagation, then iteratively update it with LiDAR inputs until the residual drops below a certain threshold. The state vector \textbf{x} is a 24-dimensional vector containing the state variables shown in Eq. (\ref{eq:flio_state}).}}
 
 \begin{equation}\label{eq:flio_state}
 	\begin{split}
@@ -84,7 +84,7 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 \end{align}
 
 \begin{algorithm}
-	\caption{State Estimation with IKF}
+	\caption{State Estimation with IEKF}
 		\label{alg:lio}
 	\begin{algorithmic}[1]
 		\State \textbf{Input} : Last output $\bar{\mathbf{x}}_{k-1}$ and $\bar{\mathbf{P}}_{k-1}$;
@@ -185,7 +185,7 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 		\node at (35,35) {\includegraphics[width=5.5cm]{sc_bin.png}};
 		
 	\end{tikzpicture}
-	\caption{A 2D bin encoding of the 3D point cloud in a single scan}
+	\caption{A 2D bin encoding of the 3D point cloud in a single scan\cite{kim2018scan}}
 	\label{fig:bin_encode}
 \end{figure}
 \paragraph{\textnormal{The column-wise similarity scoring of scan contexts is effective for dynamic objects, however columns in the scan context for the same place can be shifted due to a change in the view point of the LiDARR sensor. To alleviate this problem, distance between query scan context and all possible column-shifted scan contexts from the original candidate scan context is computed and the shift number $n$ that gives the minimum distance is used as initial guess for alignment Eq.( \ref{eq:col_shift}).  }}
@@ -290,6 +290,8 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 \caption{A point cloud from a single 3D scan is encoded into a Scan Context. An $N_{r}$ dimensional ring key is then extracted and used to build a KD-tree for retrieving nearest candidates. These candidates are compared with the query, and the closest one that meets the acceptance threshold is selected as a loop closure\cite{kim2018scan}.}
 \end{figure}
 
+\subsection{Radius based search for loop detection}
+
 \section{ICP for computing loop closure constraint}
 \paragraph{\textnormal{ICP \cite{4767965} is a widely used algorithm for rigid registration of 3D point clouds. It operates by iteratively refining the alignment between a source and a target point cloud by minimizing the sum of squared distances between corresponding points. In each iteration, it first identifies the closest points between the two clouds, estimates the best-fit rigid transformation (rotation and translation), applies this transformation to the source, and repeats the process until convergence. The optimal rotation R is computed using singular value decomposition (SVD) \cite{golub1971singular} of the cross covariance matrix of the $\textbf{H}$  shown in Eq. (\ref{eq:matrix_h}) of the corresponding points where $x_0$ and $y_0$ are the weighted mean of point clouds X, and Y respectively. The basic alignment problem of point sets $X$ and $Y$ is shown in Eq. (\ref{eq:icp_align}) where $x_i$ and $y_j$ are corresponding points that belong to 3D point clouds $X$ and $Y$ respectively. }}
 \begin{equation}
@@ -304,7 +306,7 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 	\mathbf{t^*} = \mathbf{y}_0 - \mathbf{R} \mathbf{x}_0
 	\label{eq:matrix_h}
 \end{equation}
-\paragraph{\textnormal{Point Cloud Libarary (PCL), among others, provides implementation for several variants of ICP algorithm. We used the point-to-point implementation of ICP from the PCL library. After a pair of scans corresponding to the detected loop are found, we run the PCL's ICP with the parameters shown in table \ref{tab:icp_symbolic_params}. It is important to tune these parameters properly for optimal alignment of the points clouds in the detected scans that correspond to loops. However, in our method, since the loop closure detection module robustly detects loops with $\Delta \theta$ as initial guess, these parameters shown in \ref{tab:icp_symbolic_params} do not require excessive tuning. For short-range loop closure and indoor environments, tuning these parameters is required accordingly. The transformation ($\mathbf{R^*}$ and $\mathbf{t^*}$) that aligns the two scans corresponding to the loop is added as \textit{loop constraint} to the factor graph.}}
+\paragraph{\textnormal{Point Cloud Libarary (PCL), among others, provides implementation for several variants of ICP algorithm. We used the point-to-point implementation of ICP from the PCL library. After a pair of scans corresponding to the detected loop are found, we run the PCL's ICP with the parameters shown in table \ref{tab:icp_symbolic_params}. It is important to tune these parameters properly for optimal alignment of the points clouds in the detected scans that correspond to loops. However, in our method, since the loop closure detection module robustly detects loops with $\Delta \theta$ as initial guess, these parameters do not require excessive tuning. For short-range loop closure and indoor environments, tuning these parameters is required accordingly. The transformation ($\mathbf{R^*}$ and $\mathbf{t^*}$) that aligns the two scans corresponding to the loop is added as \textit{loop constraint} to the factor graph.}}
 \begin{table}[htbp]
 	\centering
 	\caption{Parameters for ICP (Point-to-Point)}
@@ -312,12 +314,12 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 		\hline
 		\textbf{Symbol} & \textbf{Description} & \textbf{Value} \\
 		\hline
-		$d_{\text{max}}$ & Maximum correspondence distance & 150 m \\
-		$N_{\text{iter}}$ & Maximum number of iterations & 50 \\
-		$\epsilon_{\text{trans}}$ & Minimum transformation epsilon (convergence) & $1 \times 10^{-6}$ \\
-		$\epsilon_{\text{fit}}$ & Euclidean fitness epsilon (convergence) & $1 \times 10^{-6}$ \\
-		$N_{\text{RANSAC}}$ & RANSAC iterations for outlier rejection & 0 \\
-		$\tau_{\text{RANSAC}}$ & RANSAC outlier rejection threshold & 0.05 m \\
+		$d_{\text{max}}$ & 150 m & Maximum correspondence distance \\
+		$N_{\text{iter}}$ & 50 & Maximum number of iterations \\
+		$\epsilon_{\text{trans}}$  & $1 \times 10^{-6}$ & Minimum transformation epsilon (convergence)\\
+		$\epsilon_{\text{fit}}$ & $1 \times 10^{-6}$& Euclidean fitness epsilon (convergence)  \\
+		$N_{\text{RANSAC}}$ & 0 & RANSAC iterations for outlier rejection \\
+		$\tau_{\text{RANSAC}}$ & 0.05 m & RANSAC outlier rejection threshold \\
 		\hline
 	\end{tabular}
 	\label{tab:icp_symbolic_params}
@@ -370,7 +372,7 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 \caption{Error between actual measurement $\mathbf{z}_\textit{ij}$ and expected measurement $\hat{\mathbf{z}}_\textit{ij}$}
 \end{figure}
 
-\paragraph{\textnormal{For two nodes $\mathit{i}$ and $\mathit{j}$ in the pose graph, the function that computes the difference between the actual measurement $\mathbf{z}_\mathit{ij}$ and expected measurement $\hat{\mathbf{z}}_\mathit{ij}$ is denoted as in Eq. (\ref{eq:pgo_error_fun}) \cite{grisetti2010tutorial}. For a set $\mathit{C}$ of pairs of indices which have a constraint (observation) $\mathbf{z}_{\mathit{ij}}$  with information matrix $\mathbf{\Omega}_{\mathit{ij}}$, maximizing the PDF Eq. (\ref{eq:MAP}) corresponds to finding the configuration of nodes $\mathbf{x}^*$ that minimizes the negative log likelihood  $\textbf{F(x)}$ of all observations as in Eq. (\ref{eq:neg_log}). }}
+\paragraph{\textnormal{For two nodes $\mathit{i}$ and $\mathit{j}$ in the pose graph, the function that computes the difference between the actual measurement $\mathbf{z}_\mathit{ij}$ and expected measurement $\hat{\mathbf{z}}_\mathit{ij}$ is denoted as in Eq. (\ref{eq:pgo_error_fun}) \cite{grisetti2010tutorial}. For a set $\mathit{C}$ of pairs of indices which have a constraint (observation) $\mathbf{z}_{\mathit{ij}}$  with information matrix $\mathbf{\Omega}_{\mathit{ij}}$, maximizing the PDF Eq. (\ref{eq:MAP}) corresponds to finding the configuration of nodes $\mathbf{x}^*$ that minimizes the negative log likelihood  $\textbf{F(x)}$ of all observations as in Eq. (\ref{eq:neg_log}). However, in our method, we used Incremental  Smoothing and Mapping (ISAM2\cite{5979641}) due to its robustness, speed and suitability for real-time SLAM.}}
 
 \begin{equation}
 	\mathbf{x}^* = \arg\min_{\mathbf{x}} \mathbf{F}(\mathbf{x}).
@@ -379,7 +381,12 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 
 \paragraph{\textnormal{The solution to Eq. (\ref{eq:neg_log}) can be found utilizing popular optimization methods such as Gauss-Newton \cite{wang2012gauss} or the Levenberg-Marquardt (LM) \cite{roweis1996levenberg} algorithms. }}
 
-
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.6\textwidth]{images/facto_graph_kitti00_w.png}
+	\caption{Pose graph for KITTI00 sequence before optimization, nodes are shown in red dots, and factors are shown in green lines. The blue trajectory shows the path after the pose graph is optimized.}
+	\label{fig:factor_graph}
+\end{figure}
 \section{Global refinement using HBA}
 \label{sec:hba}
 \paragraph{\textnormal{Minimization of the global error function Eq.(\ref{eq:Fx}) generates best estimate of the robot poses that best fit the measurements under Gaussian assumption of the relative pose estimation. This minimization corrects the drift in the LiDAR odometry and inconsistency in the map. However, due to loop closure inaccuracy and optimization of only relative pose, there would still be small misalignments in the map after PGO. As discussed in section \ref{sec:lba}, LBA works to minimize the overall point-to-plane distance to optimize the mapping consistency. However this optimization process requires $\mathbf{O}(N^3)$ time to solve where $N$ is the number of LiDAR poses involved in the computation. To address this issue, Xiyuan Liu et al. \cite{himstedt2014large} proposed HBA method that globally optimizes the map consistency maintaining the efficiency of time consumption.
@@ -388,7 +395,7 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 \begin{figure}[h!]
 	\centering
 	\includegraphics[width=\textwidth]{images/HBA.pdf}
-	\caption{Pyramid structure of the HBA with layer number l=3, stride size s=3 and window size w=6.}
+	\caption{Pyramid structure of the HBA with layer number l=3, stride size s=3 and window size w=6\cite{10024300}.}
 	\label{fig:hba_arc}
 \end{figure}
 
@@ -420,11 +427,11 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 \end{equation}
 
 \subsection{Top-Down Process}
-\paragraph{\textnormal{In the top-down process,see figure \ref{fig:bu-td}, pose graph is constructed using the frame poses as variables and relative pose between adjacent frames as factors in each layer of the pyramid. Finally PGO is used to solve the pose graph by LM using GTSAM \cite{gtsam}. 
+\paragraph{\textnormal{In the top-down process,see figure \ref{fig:bu-td}, pose graph is constructed using the frame poses as variables and relative pose between adjacent frames as factors in each layer of the pyramid. Finally PGO is used to solve the pose graph by LM using GTSAM. 
 }}
 
 
-\begin{figure}[ht]
+\begin{figure}[H]
 	\centering
 	\begin{tikzpicture}[
 		box/.style={draw, minimum width=2.2cm, minimum height=0.5cm, align=center, fill=white, font=\footnotesize},
@@ -506,6 +513,6 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 		\node[anchor=north west, font=\tiny] at ([xshift=2pt,yshift=-2.2pt]residual.east) {Yes};
 		\node[anchor=north, font=\tiny] at ([xshift=-6pt]residual.south) {No};
 	\end{tikzpicture}
-	\caption{HBA optimization: Bottom-Up and Top-Down Process}
+	\caption{HBA optimization: Bottom-Up and Top-Down Process\cite{10024300}}
 	\label{fig:bu-td}
 \end{figure}

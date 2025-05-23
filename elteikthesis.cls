@@ -311,6 +311,10 @@
 \usepackage{url}
 \usepackage{diagbox}
 \usetikzlibrary{calc}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{float}
+
 % \usepackage{emoji}
 \usetikzlibrary{positioning, shapes, shapes.geometric, arrows.meta, fit, backgrounds} % <-- Added 'fit' here
 \tikzset{
@@ -369,7 +373,10 @@
 % pdflatex-hez
 \newcommand{\hyperrefComp}{}
 
-\RequirePackage[pdfborder={0 0 0}, unicode, pdfusetitle, \hyperrefComp]{hyperref}
+%\RequirePackage[pdfborder={0 0 0}, unicode, pdfusetitle, \hyperrefComp]{hyperref}
+\RequirePackage[
+pdfborder={0 0 0}, unicode, pdfusetitle, colorlinks=true, citecolor=blue, linkcolor=blue,urlcolor=black]{hyperref}
+
 \RequirePackage[all]{hypcap}
 \RequirePackage{url}
 \RequirePackage{bookmark}

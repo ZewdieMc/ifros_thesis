@@ -3,7 +3,7 @@
 	noindent, % No indentation of first lines in each paragraph
 	nohyp, % No hyphenation of words
 %	twoside, % Double sided format
-	%draft, % Quicker draft compilation without rendering images
+%	draft, % Quicker draft compilation without rendering images
 	%final, % Set final to hide todos
 	tikz,border=10pt
 ]{elteikthesis}[2024/04/26]
@@ -147,7 +147,8 @@ name={odometry},
 \maketitle
 % Topic declaration page (mandatory) - can also be attached instead
 %\includepdf[pages={2,3}]{other/Z_signed.pdf}
-
+% Use Roman numerals for front matter
+\pagenumbering{roman}
 % Acknowledgements (optional) - in case your thesis received funding or would like to express special thanks to someone
 \chapter*{\acklabel}
 \addcontentsline{toc}{chapter}{\acklabel}
@@ -157,6 +158,12 @@ name={odometry},
 \cleardoublepage
 
 % Main content
+
+
+% Switch to Arabic numerals starting at the introduction
+\cleardoublepage
+\pagenumbering{arabic}  % This resets page number to 1
+\setcounter{page}{1}    % Ensure it starts from 1
 \input{chapters/01_intro}
 \cleardoublepage
 
@@ -167,6 +174,9 @@ name={odometry},
 \cleardoublepage
 
 \input{chapters/04_results}
+\cleardoublepage
+
+\input{chapters/05_discussion}
 \cleardoublepage
 
 \input{chapters/05_conclusion}
@@ -187,9 +197,9 @@ name={odometry},
 % In case your thesis received financial support from a project or the university, it is usually required to indicate the proper attribution in the thesis itself. Special thanks can also be expressed towards teachers, fellow students and colleagues who helped you in the process of creating your thesis.
 
 % Appendices (optional) - useful for detailed information in long tables, many and/or large figures, etc.
-% \appendix
-% \input{samples_en/sim.tex}
-% \cleardoublepage
+\appendix
+\input{chapters/appendix.tex}
+\cleardoublepage
 
 
 % Bibliography (mandatory)
