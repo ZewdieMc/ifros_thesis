@@ -1,7 +1,7 @@
 \chapter{Experiments and Results}
 \label{ch:results}
-\section{Introduction}
-\label{sec:res_intro}
+%\section*{Introduction}
+%\label{sec:res_intro}
 \paragraph{\textnormal{This chapter presents the evaluation of the proposed mapping system through a series of experiments conducted on both custom and public datasets. The custom dataset includes trajectories of varying lengths (long and short) captured in diverse settings, containing both indoor and outdoor environments. The aim is to assess the system's performance in terms of trajectory accuracy, loop closure effectiveness, map consistency, and computational efficiency.
 }}
 \section{Experimental Setup}
@@ -9,19 +9,19 @@
 
 \subsection{Hardware and Platform}
 \label{sec:hw_platform}
-\paragraph{\textnormal{The custom datasets were collected using the Hunter 2.0 mobile robot from AgileX Robotics, equipped with an Ouster OS1-128 LiDAR. The sensor provides 128 scan lines, a 360° horizontal field of view, and operates at 10 Hz. It also includes a built-in IMU, which was used for LIO odometry estimation. The extrinsic calibration between the ouster LiDAR and the IMU can be computed online with FAST-LIO2, however in our experiments we used identity for rotation with no translation. All data were recorded using ROS 2 bag files for both real-time and offline processing. For running the mapping system, both in real-time and during offline refinement, a separate computer was used. It featured an AMD Ryzen 7 CPU, NVIDIA RTX 3060 GPU, and 32 GB RAM, running Ubuntu 22.04 with ROS 2 Humble. All mapping modules were implemented in C++ to ensure real-time performance and efficient offline processing.
+\paragraph{\textnormal{The custom datasets were collected using the AgileX Hunter 2.0 mobile robot equipped with an Ouster OS1-128 LiDAR. The sensor provides 128 scan lines, a 360° horizontal field of view, and operates at 10 Hz. It also includes a built-in IMU, which was used for LIO odometry estimation. The extrinsic calibration between the ouster LiDAR and the IMU can be computed online with FAST-LIO2, however in our experiments we used identity for rotation with no translation. All data were recorded using ROS 2 bag files for both real-time and offline processing. For running the mapping system, both in real-time and during offline refinement, a separate computer was used. It featured an AMD Ryzen 7 CPU, NVIDIA RTX 3060 GPU, and 32 GB RAM, running Ubuntu 22.04 with ROS 2 Humble. All mapping modules were implemented in C++ to ensure real-time performance and efficient offline processing.
 }}
 
 
 \begin{figure}[h!]
 	\centering
-	\begin{subfigure}[t]{0.43\textwidth}
+	\begin{subfigure}[t]{0.33\textwidth}
 		\centering
 		\includegraphics[width=\linewidth]{images/ouster_lidar.jpg}
 		\caption{}
 	\end{subfigure}
 	\hfill
-	\begin{subfigure}[t]{0.48\textwidth}
+	\begin{subfigure}[t]{0.38\textwidth}
 		\centering
 		\includegraphics[width=\linewidth]{images/ouster_frame.png}
 		\caption{}
@@ -29,39 +29,14 @@
 	\caption{a) Ouster OS1-128 LiDAR with built-in IMU. b) Sensor coordinate frame \cite{ousterdocs}}
 	\label{fig:overview}
 \end{figure}
-%
-%\subsection{Software Modules}
-%\label{sec:sw_modules}
-%\paragraph{\textnormal{The entire mapping pipeline contains modular components implemented in C++ within ROS2 Humble framework. The software dependencies of each components is summerized in table \ref{tab:sw_depends}. The version numbers we used in our experiments are shown in bold.
-%}}
-%\noindent
-%\begin{table}[H]
-%	\centering
-%	\caption{Software modules and dependencies}
-%	\begin{tabular}{|c|c|c|c|}
-%		\hline
-%		\diagbox{Deps}{Module} & FAST-LIO2 & PGO & HBA \\
-%		\hline
-%		C++ &\multicolumn{3}{c|}{17}  \\
-%		\hline
-%		Eigen &>=3.3.4(\textbf{3.4.0}) & \textbf{3.4.0} &>=3.3.7(\textbf{3.4.0})\\
-%		\hline
-%		GTSAM & None & \multicolumn{2}{c|}{>=4.1.1(\textbf{4.2.0})}\\
-%		\hline
-%		PCL &>=1.8(\textbf{1.12.1}) & \textbf{1.12.1} &>=1.10.0(\textbf{1.12.1}) \\
-%		\hline
-%		Ubuntu & \multicolumn{3}{c|}{22.04} \\
-%		\hline
-%		ROS & \multicolumn{3}{c|}{Humble} \\
-%		\hline
-%	\end{tabular}
-%	\label{tab:sw_depends}
-%\end{table}
 
 
 \subsection{Dataset}
 \label{sec:dataset}
-To evaluate the performance of the proposed mapping system, experiments were performed with various open source dataset and custom dataset collected around Saxion buildings. The custom datasets were collected in different days, with varying trajectory length, and number of loop closures. Experiments with the open source MulRan\footnote{https://sites.google.com/view/mulran-pr/dataset} \cite{gskim-2020-mulran} and KITTI\footnote{https://www.cvlibs.net/datasets/kitti/} \cite{Geiger2013IJRR} dataset were performed to evaluate the robustness of the proposed mapping module  to different variety of sensors types, trajectory length, and driving speed. These open source dataset also contain ground truth trajectories that are used for comparing the performance of the proposed method. The sequences KAIST02, KAIST03, and RiverSide01 from MulRan and sequences 00, and 05 from KITTI are used in the experimentation.
+
+To evaluate the performance of the proposed mapping system, experiments were performed with various open source dataset and custom dataset collected around Saxion buildings. The custom datasets containing four sequences were collected in different days, with varying trajectory length, and number of loop closures. Three of the sequences denoted as Saxion-00, Saxion-01, and Saxion-03 were recorded in outdoor environment while one sequence referred to as Saxion-11 was recorded in indoor. Saxion-01 is the shortest of the outdoor trajectories and contains places revisited only in the same direction. Saxion-02 includes both reverse direction and lane-level lateral shift in revisited areas. Saxion-03 contains the longest trajectory with the highest number of loop closures.\\
+
+	 Public datasets, MulRan\footnote{https://sites.google.com/view/mulran-pr/dataset} \cite{gskim-2020-mulran} and KITTI\footnote{https://www.cvlibs.net/datasets/kitti/} \cite{Geiger2013IJRR}, were used to evaluate the robustness of the proposed mapping module  to different variety of sensors types, trajectory length, and driving speed. These open source dataset also contain ground truth trajectories that are used for comparing the performance of the proposed method. The sequences KAIST02, KAIST03, and RiverSide01 from MulRan and sequences 00, and 05 from KITTI are used in the experimentation. Table~\ref{tab:datasets} contains details of the datasets used in our experimentation.
 
 \begin{table}[H]
 	\centering
@@ -70,10 +45,10 @@ To evaluate the performance of the proposed mapping system, experiments were per
 		\toprule
 		Dataset 	& 	LiDAR 	 		& Envt. 	& G.Truth		& Size &Dist.(m) & Duration(s)\\
 		\midrule
-		Saxion-01 	& OS-128 			& Outdoor	& \xmark		& 11GB &935			&740	\\
-		Saxion-02 	& OS-128 			& Outdoor	& \xmark		& 29GB &1155 		&958	 \\
-		Saxion-03 	& OS-128 			& Outdoor	& \xmark		& 50GB &1823 		&1668	 \\
-		Saxion-11 	& OS-128 			& Indoor	& \xmark		& 54GB &431			&696	 \\
+		Saxion-01 	& OS1-128 			& Outdoor	& \xmark		& 11GB &935			&740	\\
+		Saxion-02 	& OS1-128 			& Outdoor	& \xmark		& 29GB &1155 		&958	 \\
+		Saxion-03 	& OS1-128 			& Outdoor	& \xmark		& 50GB &1823 		&1668	 \\
+		Saxion-11 	& OS1-128 			& Indoor	& \xmark		& 54GB &431			&696	 \\
 		KITTI05 	& HDL-64E 			& Outdoor	& \cmark		& 21GB &2205 		&288	 \\
 		KAIST03 	& OS1-64 			& Outdoor	& \cmark		& 18GB &6272 		&862	 \\
 		KITTI00 	& HDL-64E 			& Outdoor	& \cmark		& 34GB &3717 		&470	 \\
@@ -149,9 +124,9 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 %
 \section{Evaluation metrics}
 \label{sec:ev_metrics}
-\paragraph{\textnormal{The proposed mapping pipeline was evaluated using a comprehensive set of quantitative and qualitative metrics to ensure a robust performance assessment. Specifically, Absolute Pose Error(APE) was employed to evaluate the global consistency of the estimated trajectory by comparing it against the ground truth data. To measure local accuracy and drift between consecutive poses, Relative Pose Error (RPE) was employed. To compute the APE, and RPE values of two trajectories, the Evo \cite{grupp2017evo} tool that supports trajectories in different file formats was used. All the APE values in our experiments are computed after aligning the trajectories using Evo. }}
+\paragraph{\textnormal{The proposed mapping pipeline was evaluated using a comprehensive set of quantitative and qualitative metrics to ensure a robust performance assessment. Specifically, \gls{ape} was employed to evaluate the global consistency of the estimated trajectory by comparing it against the ground truth data. To measure local accuracy and drift between consecutive poses, Relative Pose Error (RPE) was employed. To compute the APE, and RPE values of two trajectories, the Evo \cite{grupp2017evo} tool that supports trajectories in different file formats was used. All the APE values in our experiments are computed after aligning the trajectories using Evo. }}
 
-\paragraph{\textnormal{Map consistency was assessed qualitatively through visual inspection of the generated maps and quantitatively using mean map entropy (MME \cite{7324196}). MME calculates the natural logarithm of the determinant of the covariance matrix. The smaller the MME value is, the more consistent the map is. Finally, Runtime Performance was measured by recording the average processing time per LiDAR scan in the online module. These evaluation criteria collectively provide a thorough insight into the accuracy, robustness, and efficiency of the developed system.
+\paragraph{\textnormal{Map consistency was assessed qualitatively through visual inspection of the generated maps and quantitatively using \gls{mme} \cite{7324196}. It computes the natural logarithm of the determinant of the covariance matrix. The smaller the MME value is, the more consistent the map is. Finally, Runtime Performance was measured by recording the average processing time per LiDAR scan in the online module. These evaluation criteria collectively provide a thorough insight into the accuracy, robustness, and efficiency of the developed system.
 }}
 
 \section{Results}
@@ -163,7 +138,7 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 }}
 \begin{table}[H]
 	\centering
-	\caption{Absolute Pose Error (APE) with respect to translation (in meters) for \texttt{saxion01}.}
+	\caption{Absolute Pose Error (APE) with respect to translation (in meters) for \texttt{saxion-01}.}
 	\label{tab:traj_error01}
 	\begin{tabular}{lccccc}
 		\toprule
@@ -191,18 +166,18 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 		\caption{}
 		\label{sub_fig:saxion_01_pg_err}
 	\end{subfigure}
-	\caption{RMSE of FAST-LIO2 and PGO errors.}
+	\caption{APE of FAST-LIO2 and PGO trajectories for \texttt{Saxion-01} dataset w.r.t HBA trajectory.}
 	\label{fig:saxion_01_traj_errors}
 \end{figure}
 
 
-\paragraph{\textnormal{Figure \ref{fig:saxion01_traj} shows the trajectories generated by FAST-LIO, PGO, and HBA. It can be shown that the trajectory has progressively been improved by loop closure with PGO, and then by HBA. Considering the HBA trajectory as ground truth, we compute the APE with both the odometery and PGO trajectories and found that the odometry has RMSE of \textbf{6.3m} and PGO has RMSE of \textbf{2.51m}. Table \ref{tab:traj_error01} shows the APE with respect to translation part for the three outdoor Saxion datasets.
+\paragraph{\textnormal{Figure \ref{fig:saxion01_traj} shows the trajectories generated by FAST-LIO, PGO, and HBA. It can be shown that the trajectory has progressively been improved by loop closure with PGO, and then by HBA. Considering the HBA trajectory as ground truth, we compute the APE with both the odometery and PGO trajectories and found that the odometry has Root Mean Squared Error (RMSE) of \textbf{6.3m} and PGO has RMSE of \textbf{2.51m}. Table \ref{tab:traj_error01} shows the APE with respect to translation part for the three outdoor Saxion datasets.
 }}
 
 
 \begin{table}[H]
 	\centering
-	\caption{APE for each Saxion dataset before and after PGO}
+	\caption{RMSE of the APE for each Saxion dataset before and after PGO}
 	\begin{tabular}{ccccc}
 		\hline
 		\multirow{3}{*}{Method} & \multicolumn{4}{c}{Dataset} \\
@@ -221,18 +196,21 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=\textwidth]{images/saxion_01_traj_xyz.png}
-	\caption{Axis-wise comparison of the trajectories}
+	\includegraphics[width=0.9\textwidth]{images/saxion_01_traj_xyz.png}
+	\caption{Axis-wise comparison of the trajectories of FAST-LIO2, PGO, and HBA}
 	\label{fig:saxion01_traj_xyz}
 \end{figure}
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\textwidth]{images/saxion01_traj_new.png}
-	\caption{Comparison of trajecories for Saxion$\_$01 dataset. a) Top view trajectories. b) Axis-wise comparison}
+	\caption{Comparison of trajecories for \texttt{Saxion-01} dataset.}
 	\label{fig:saxion01_traj}
 \end{figure}
 
-\paragraph{\textnormal{The root mean square error (RMSE) of the estimated trajectories for all Saxion dataset sequences including the indoor dataset, using HBA as the reference trajectory, is presented in Table~\ref{tab:traj_error_saxion}. The errors in the trajectory for FAST-LIO2 and PGO are shown in Figure~\ref{sub_fig:saxion_01_fl_err} and Figure~\ref{sub_fig:saxion_01_pg_err} respectively.}}
+%\paragraph{\textnormal{The root mean square error (RMSE) of the estimated trajectories for all Saxion dataset sequences including the indoor dataset, using HBA as the reference trajectory, is presented in Table~\ref{tab:traj_error_saxion}. The errors in the trajectory for FAST-LIO2 and PGO are shown in Figure~\ref{sub_fig:saxion_01_fl_err} and Figure~\ref{sub_fig:saxion_01_pg_err} respectively.}}
+
+\paragraph{\textnormal{The RMSE for the estimated motion across all Saxion dataset sequences, including the indoor dataset, is presented in Table~\ref{tab:traj_error_saxion}, using HBA as the reference. The errors for FAST-LIO2 and PGO are illustrated in Figure~\ref{sub_fig:saxion_01_fl_err} and Figure~\ref{sub_fig:saxion_01_pg_err}, respectively.}}
+
 %
 %\begin{table}[H]
 %	\centering
@@ -261,7 +239,7 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 \paragraph{\textnormal{Upon incorporating PGO, the system demonstrated significant correction in the loop closure areas bringing the lateral misalignment down to 2.5m, see Figure~\textcolor{blue}{\ref{fig:saxion01_map}b}, for saxion01 dataset. The vertical misalignment in the map (Figure~\textcolor{blue}{\ref{fig:saxion01_map}c}) and in the trajectory (Figure \ref{fig:saxion01_traj_xyz}) was also significantly corrected. This vertical drift is common in most LIO methods and we incorporated GPS factor into the PGO only considering the altitude difference as a factor and putting large values for the x, and y in the covariance matrix . The map after correcting the vertical misalignment is shown in Figure~\textcolor{blue}{\ref{fig:saxion01_map}d}. The PGO map have small misalignment caused by inaccuracies in the loop closure and incorrect relative pose (constraints) between nodes in the pose graph.
 }}
 
-\paragraph{\textnormal{The application of HBA to the frame generated by PGO in the offline phase yielded notable improvement in the map quality (Figure~\textcolor{blue}{\ref{fig:saxion01_map}e}) and trajectory(Figure~\ref{fig:saxion01_traj}). The residual distortions that persisted after PGO are corrected and refined. In the saxion01 dataset, the 2.5m lateral misalignment was eliminated, see Figure~\textcolor{blue}{\ref{fig:saxion01_map}e} , after applying HBA. Figure \ref{fig:saxion03_gmap} shows the final mapping result for the \texttt{saxion03} dataset.
+\paragraph{\textnormal{The application of HBA to the frames (poses) generated by PGO in the offline phase yielded notable improvement in the map quality (Figure~\textcolor{blue}{\ref{fig:saxion01_map}e}) and trajectory(Figure~\ref{fig:saxion01_traj}). The residual distortions that persisted after PGO are corrected and refined. In the saxion01 dataset, the 2.5m lateral misalignment was eliminated, see Figure~\textcolor{blue}{\ref{fig:saxion01_map}e} , after applying HBA. Figure \ref{fig:saxion03_gmap} shows the final mapping result for the \texttt{saxion03} dataset.
 }}
 \newpage
 \begin{figure}[H]
@@ -276,16 +254,16 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 \begin{table}[ht]
 	\centering
 	\small
-	\caption{MME($\mu$, $\sigma$) of map generated from the different datasets after each mapping stage. The MME values in  green color demonstrate the best quality of the map and those in bold magenta color show the second best quality of the map.}
+	\caption{MME($\mu$, $\sigma$) of map generated from the different datasets after each mapping stage. The MME values in \textbf{bold} demonstrate the best quality of the map and those in \underline{underline} show the second best quality of the map.}
 	\begin{tabular}{c|cccccc}
 		\Xhline{1.5pt}
-		method & S01 & S02 & S03& S11 & K03 & $\mathcal{K}$00\\
+		Method & S01 & S02 & S03& S11 & K03 & $\mathcal{K}$00\\
 		\midrule
-		FAST-LIO2 & -2.63, 0.11 &-1.9, 0.19  & -2.46, 0.19 & \textcolor{green}{\textbf{-3.34}}, 0.10 & -1.85, 0.07 & -2.40, 0.04\\
+		FAST-LIO2 & -2.63, 0.11 &-1.9, 0.19  & -2.46, 0.19 & \textcolor{black}{\textbf{-3.34}}, 0.10 & -1.85, 0.07 & -2.40, 0.04\\
 %		\hline
-		PGO  & \textcolor{magenta}{\textbf{-2.66}}, 0.14 &\textcolor{green}{\textbf{-2.50}}, 0.12  &  \textcolor{magenta}{\textbf{-2.60}}, 0.30 & \textcolor{magenta}{\textbf{-3.21}}, 0.20 & \textcolor{magenta}{\textbf{-1.91}}, 0.03 & \textcolor{magenta}{\textbf{-2.47}}, 0.08 \\
+		PGO  & \textcolor{black}{\underline{-2.66}}, 0.14 &\textcolor{black}{\textbf{-2.50}}, 0.12  &  \textcolor{black}{\underline{-2.60}}, 0.30 & \textcolor{black}{\underline{-3.21}}, 0.20 & \textcolor{black}{\underline{-1.91}}, 0.03 & \textcolor{black}{\underline{-2.47}}, 0.08 \\
 %		\hline
-		HBA     & \textcolor{green}{\textbf{-2.71}}, 0.05 &\textcolor{magenta}{\textbf{-2.48}}, 0.084 & \textcolor{green}{\textbf{-2.85}}, 0.13 &-3.20, 0.091  &\textcolor{green}{\textbf{-2.39}}, 0.05  &\textcolor{green}{\textbf{-2.97}}, 0.026 \\
+		HBA     & \textcolor{black}{\textbf{-2.71}}, 0.05 &\textcolor{black}{\underline{-2.48}}, 0.084 & \textcolor{black}{\textbf{-2.85}}, 0.13 &-3.20, 0.091  &\textcolor{black}{\textbf{-2.39}}, 0.05  &\textcolor{black}{\textbf{-2.97}}, 0.026 \\
 		\Xhline{1.5pt} 
 	\end{tabular}
 	\vspace{0.1em}
@@ -332,7 +310,7 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 %\end{figure}
 
 
-\paragraph{\textnormal{The total processing time for the PGO module includes loop detection, ICP alignment, pose graph construction, and solving the least-squares problem. We evaluated the processing time of the PGO module across all datasets used, and in Figure \ref{fig:processing_time_kaist},  we present the evaluation results for a dataset with a moderately long trajectory. Majority of the processing time—approximately 400 ms on average—is consumed by the ICP alignment step. The time required to optimize the pose graph using iSAM2, increases linearly with the number of nodes in the graph. For instance, processing a pose graph with up to 8000 nodes takes around 150 ms on average. To enhance the efficiency of the PGO module, we divided the workflow into subtasks—loop detection, ICP alignment, pose graph construction, and optimization—and executed each subtask concurrently in a dedicated thread. }}
+\paragraph{\textnormal{The total processing time for the PGO module includes loop detection, ICP alignment, pose graph construction, and solving the least-squares problem. We evaluated the processing time of the PGO module across all datasets used, and in Figure \ref{fig:processing_time_kaist},  we present the evaluation results for a dataset with a moderately long trajectory. Majority of the processing time—approximately 200 ms on average—is consumed by the ICP alignment step. The time required to optimize the pose graph using iSAM2, increases linearly with the number of nodes in the graph. For instance, processing a pose graph with up to 8000 nodes takes around 150 ms on average. To enhance the efficiency of the PGO module, we divided the workflow into subtasks—loop detection, ICP alignment, pose graph construction, and optimization—and executed each subtask concurrently in a dedicated thread. }}
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=\textwidth]{images/time_plots.png}
@@ -340,7 +318,7 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 	\label{fig:processing_time_kaist}
 \end{figure}
 
-\paragraph{\textnormal{The total computation time for HBA includes the time taken for adaptive-voxe construction, and the time taken for BA. It is also important to note that the computation time and RAM consumption of HBA also depends on the number of poses $N$ and the optimal number of layers $\mathit{l}$. In complex environments, map construction takes longer due to the increased computational cost of adaptive voxel map generation. If the number of frame poses is larger ($N > 5 \times 10^3$),  a 4-layer pyramid is optimal, and for $N < 5 \times 10^3$, 3-layer and 4-layer pyramid perform similar.
+\paragraph{\textnormal{The total computation time for HBA includes the time taken for adaptive-voxe construction, and the time taken for BA. It is also important to note that the computation time and RAM consumption of HBA also depends on the number of poses $N$ and the optimal number of layers $\mathit{l}$. In complex environments, map construction takes longer due to the increased computational cost of adaptive voxel map generation. If the number of frame poses is larger ($N > 5 \times 10^3$),  a 4-layer pyramid is optimal, and for $N < 5 \times 10^3$, 3-layer and 4-layer pyramid perform similar\cite{himstedt2014large}.
 }}
 
 %\begin{figure}[H]
@@ -350,36 +328,34 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 %	\label{fig:saxion01_gmap}
 %\end{figure}
 
-\section{Comparison with other SOTA SLAM methods}
+\section{Comparison with state of the art}
 
-\paragraph{\textnormal{This section presents a comparative evaluation of the proposed SLAM system with three state-of-the-art methods: 3D Range-Inertial Localization and Mapping with GPU-Accelerated Scan Matching Factors (GLIM \cite{koide2024glim}), KISS SLAM\cite{guadagnino2025kiss}, and MOLA SLAM\cite{blanco2025mola_lo}. The comparison is based on two criteria: map quality and trajectory accuracy, measured using MME and APE, respectively. To better evaluate the robustness of our method, the comparison was performed on the three custom datasets and three public datasets with relatively longer trajectory. Since there is no ground truth for our custom datasets, only MME evaluation on the maps was performed. }}
+\paragraph{\textnormal{This section presents a comparative evaluation of the proposed SLAM system with three state-of-the-art methods: 3D Range-Inertial Localization and Mapping with GPU-Accelerated Scan Matching Factors (GLIM \cite{koide2024glim}), KISS SLAM\cite{guadagnino2025kiss}, and MOLA SLAM\cite{blanco2025mola_lo}. The comparison is based on two criteria: map quality and trajectory accuracy, measured using MME and APE, respectively. To better evaluate the robustness of our method, the comparison was performed on the three custom datasets and three public datasets with relatively longer trajectory. Since there is no ground truth for our custom datasets, only MME evaluation on the maps was performed. For the public datasets, performance was evaluated using both MME and APE.}}
 \begin{table}[ht]
 	\centering
 	\small
-	\caption{MME comparison with SOTA SLAM methods.}
+	\caption{MME comparison with state of the art.}
 	\begin{tabular}{c|c|c|c|c|c|c}
 		\Xhline{1.5pt}
-		method & S01 & S02 & S03&  $\mathcal{K}$05 & K03 & $\mathcal{K}$00\\
+		Method & S01 & S02 & S03&  $\mathcal{K}$05 & K03 & $\mathcal{K}$00\\
 		\midrule
-		K-SLAM  &\textcolor{magenta}{\textbf{-2.47}}, 0.05  & \textcolor{magenta}{\textbf{-2.53}}, 0.08 	& -2.52, 0.11  &  -2.54, 0.16	&\textcolor{green}{-2.42}, 0.03 & -2.50, 0.13\\
+		K-SLAM  &\textcolor{black}{\underline{-2.47}}, 0.05  & \textcolor{black}{\underline{-2.53}}, 0.08 	& -2.52, 0.11  &  -2.54, 0.16	&\textcolor{black}{-2.42}, 0.03 & -2.50, 0.13\\
 		%		LOAM  &  &  	&   &  	&	 & \\
 		
-		MOLA  & -2.43, 0.09 &	\textcolor{green}{\textbf{-2.54}}, 0.05	& -2.67, 0.045	& \textcolor{green}{\textbf{-2.66,}} 0.05 	& -1.79, 0.07 &\textcolor{green}{\textbf{-2.63}}, 0.045 \\
+		MOLA  & -2.43, 0.09 &	\textcolor{black}{\textbf{-2.54}}, 0.05	& -2.67, 0.045	& \textcolor{black}{\textbf{-2.66,}} 0.05 	& -1.79, 0.07 &\textcolor{black}{\textbf{-2.63}}, 0.045 \\
 		
-		GLIM  	   & -2.40, 0.12 &	-2.49, 0.09	& \textcolor{magenta}{\textbf{-2.73}}, 0.15 	& -2.49, 0.05	&-2.35, 0.044	 &-1.10, 0.17\\
+		GLIM  	   & -2.40, 0.12 &	-2.49, 0.09	& \textcolor{black}{\underline{-2.73}}, 0.15 	& -2.49, 0.05	&-2.35, 0.044	 &-1.10, 0.17\\
 		
-		Ours & \textcolor{green}{\textbf{-2.71}}, 0.05 &-2.47, 0.084 & \textcolor{green}{\textbf{-2.85}}, 0.13 &\textcolor{magenta}{\textbf{-2.56}}, 0.066&\textcolor{magenta}{\textbf{-2.39}}, 0.05  &\textcolor{magenta}{-2.57}, 0.026 \\
+		Proposed & \textcolor{black}{\textbf{-2.71}}, 0.05 &-2.47, 0.084 & \textcolor{black}{\textbf{-2.85}}, 0.13 &\textcolor{black}{\underline{-2.56}}, 0.066&\textcolor{black}{\underline{-2.39}}, 0.05  &\textcolor{black}{\underline{-2.57}}, 0.026 \\
 		
 		\Xhline{1.5pt} 
 	\end{tabular}
 	\vspace{0.1em}
-	\\ Values in green and magenta show the best and 2nd best quality of the map respectively. 
+	\\ Values in \textbf{bold} and \underline{underline} show the best and 2nd best quality of the map respectively. 
 	\label{tab:sota_mme}
 \end{table}
-\paragraph{\textnormal{During map comparison uisng MME, the final map for MOLA SLAM (saved in a metric map(\texttt{.mm}) format) is first converted it to \texttt{.pcd} format before calculating MME. For GLIM SLAM and KISS SLAM, both frame poses and corresponding \texttt{pcd} files are outputted. Hence, before calculating MME, map was constructed by aggregating the point cloud files using frame poses. Table \ref{tab:sota_mme} shows the MME of the maps generated for the custom and public datasets using the different SLAM methods including ours. ATE was computed only for KITTI00, KITTI05, and KAIST03 as shown in Table \ref{tab:traj_error_public_comp} because these datasets have ground truth trajectories. 
+\paragraph{\textnormal{During map comparison uisng MME, the final map for MOLA SLAM (saved in a metric map(\texttt{.mm}) format) is first converted it to \texttt{.pcd} format before calculating MME. For GLIM SLAM and KISS SLAM, both frame poses and corresponding \texttt{pcd} files are outputted. Hence, before calculating MME, map was constructed by aggregating the point cloud files using frame poses. Table \ref{tab:sota_mme} shows the MME of the maps generated for the custom and public datasets using the different SLAM methods including the proposed. ATE was computed only for KITTI00, KITTI05, and KAIST03 as shown in Table \ref{tab:traj_error_public_comp} because these datasets have ground truth trajectories. 
 }}
-
-
 
 \begin{table}[hb]
 	\centering
@@ -415,51 +391,48 @@ In order for the SLAM to work correctly for each dataset, an extrinsic calibrati
 
 \begin{figure}[H]
 	\centering
-	\begin{subfigure}[b]{0.49\textwidth}
+	\begin{subfigure}[b]{\textwidth} % 1.64 / (1.64 + 1.16) ≈ 0.585
 		\centering
-		\includegraphics[width=\linewidth]{images/k00_tra_err.png}
-		\caption{}
+		\includegraphics[width=0.7\textwidth]{images/k00_tra_err.png}
+		\caption{Errors on KITTI00}
 		\label{sub_fig:ki0_err}
 	\end{subfigure}
-	\hfill
-	\begin{subfigure}[b]{0.49\textwidth}
-		\centering
-		\includegraphics[width=\linewidth]{images/k00_tra_err_stats.png}
-		\caption{}
-		\label{sub_fig:ki0_stat}
-	\end{subfigure}
 
-	\begin{subfigure}[b]{0.49\textwidth}
+	\begin{subfigure}{\textwidth} % 1.64 / (1.64 + 1.16) ≈ 0.585
 		\centering
-		\includegraphics[width=\linewidth]{images/k3_tra_err.png}
-		\caption{}
+		\includegraphics[width=0.7\textwidth]{images/k3_tra_err.png}
+		\caption{Errors on KAIST03}
 		\label{sub_fig:ka3_err}
 	\end{subfigure}	
-	\hfill
-	\begin{subfigure}[b]{0.49\textwidth}
-		\centering
-		\includegraphics[width=\linewidth]{images/k3_tra_err_stat.png}
-		\caption{}
-		\label{sub_fig:ka3_stat}
-	\end{subfigure}
 
-	\begin{subfigure}[b]{0.49\textwidth}
+	\begin{subfigure}[b]{\textwidth} % 1.64 / (1.64 + 1.16) ≈ 0.585
 		\centering
-		\includegraphics[width=\linewidth]{images/k05_tra_err.png}
-		\caption{}
+		\includegraphics[width=0.7\textwidth]{images/k05_tra_err.png}
+		\caption{Errors on KITTI05}
 		\label{sub_fig:ki5_err}
 	\end{subfigure}
-	\hfil
-	\begin{subfigure}[b]{0.49\textwidth}
-		\centering
-		\includegraphics[width=\linewidth]{images/k05_tra_err_stat.png}
-		\caption{}
-		\label{sub_fig:ki5_stat}
-	\end{subfigure}	
-	\caption{Trajectory Error comparison. \ref{sub_fig:ki0_err} and \ref{sub_fig:ki0_stat} show the errors for \texttt{KITTI00}, \ref{sub_fig:ka3_err} and \ref{sub_fig:ka3_stat} show the errors for \texttt{KAIST03}, \ref{sub_fig:ki5_err} and \ref{sub_fig:ki5_stat} show errors for \texttt{KITTI05}}
+	\caption{Trajectory Error comparison with other SLAM methods.}
 	\label{fig:sota_comp_traj}
 \end{figure}
 
 
+\begin{figure}[H]
+	\centering
+	\begin{subfigure}[b]{0.49\textwidth}
+		\centering
+		\includegraphics[width=\linewidth]{images/greenhouse_pgo.png}
+		\caption{After PGO}
+		\label{fig:grnhs_pgo}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[b]{0.49\textwidth}
+		\centering
+		\includegraphics[width=\linewidth]{images/greenhouse_HBA.png}
+		\caption{After correction with HBA}
+		\label{fig:grnhs_hba}
+	\end{subfigure}
+	\caption{Greenhouse map}
+	\label{fig:greenhouse}
+\end{figure}
 
 

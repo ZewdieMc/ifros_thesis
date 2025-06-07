@@ -5,18 +5,18 @@
 %	twoside, % Double sided format
 %	draft, % Quicker draft compilation without rendering images
 	%final, % Set final to hide todos
-	tikz,border=10pt
+	tikz,border=10pt,
 ]{elteikthesis}[2024/04/26]
 
 % \pdfobjcompresslevel=0 % Disable object compression
 
 % The minted package is also supported for source highlighting
 % See elteikthesis_minted.tex for example
-%\usepackage[newfloat]{minted}
+\usepackage[newfloat]{minted}
 
 % Document's metadata
-\title{Globally Consistent Mapping in Indoor and Outdoor\\
-	Environments Using Hybrid LiDAR SLAM } % title
+\title{Globally Consistent Mapping in \\Indoor and Outdoor
+	Environments\\ Using Hybrid LiDAR SLAM } % title
 \date{2025} % year of defense
 
 % Author's metadata
@@ -71,10 +71,10 @@ name={odometry},
     description={The process of computing relative displacement of a robot using on-board sensors}
 }
 
-\newglossaryentry{sfm}{
-    name={Structure from Motion (SfM)},
-    description={The task of reconstructing a 3D scene and a sequence of camera poses from a set of images}
-}
+% \newglossaryentry{sfm}{
+%     name={Structure from Motion (SfM)},
+%     description={The task of reconstructing a 3D scene and a sequence of camera poses from a set of images}
+% }
 
 \newglossaryentry{kdtree}{
     name={k-d tree},
@@ -98,13 +98,27 @@ name={odometry},
 \newacronym{rtk}{RTK}{Real-Time Kinematics}
 \newacronym{kf}{KF}{Kalman Filter}
 \newacronym{ekf}{EKF}{Extended Kalman Filter}
+\newacronym{ukf}{UKF}{Unscented Kalman Filter}
+\newacronym{iekf}{IEKF}{Iterated Extended Kalman Filter}
+\newacronym{sfm}{SfM}{Structure from Motion}
 \newacronym{pf}{PF}{Particle Filter}
 \newacronym{icp}{ICP}{Iterative Closest Point}
 \newacronym{ndt}{NDT}{Normal Distributions Transform}
 \newacronym{loam}{LOAM}{LiDAR Odometry and Mapping}
 \newacronym{lio}{LIO}{LiDAR-Inertial Odometry}
-\newacronym{cnn}{CNN}{Convolutional Neural Network}
-\newacronym{cl}{CNN}{Customer Level}
+\newacronym{lo}{LO}{LiDAR Odometry}
+\newacronym{pgo}{PGO}{Pose Graph Optimization}
+\newacronym{cl}{CL}{Customer Level}
+\newacronym{hba}{HBA}{Hierarchical Bundle Adjustment}
+\newacronym{gps}{GPS}{Global Positioning System}
+\newacronym{imu}{IMU}{Inertial Measurement Unit}
+\newacronym{radar}{RADAR}{Radio Detection and Ranging}
+\newacronym{fov}{FoV}{Field of View}
+\newacronym{pdf}{PDF}{Probability Density Function}
+\newacronym{lba}{LBA}{LiDAR Bundle Adjustment}
+\newacronym{svd}{SVD}{Singular Value Decomposition}
+\newacronym{ape}{APE}{Absolute Pose Error}
+\newacronym{mme}{MME}{Mean Map Entropy}
 
 \makeatletter
 \newcount\ALG@printindent@tempcnta
@@ -146,18 +160,47 @@ name={odometry},
 % Title page (mandatory)
 \maketitle
 % Topic declaration page (mandatory) - can also be attached instead
-%\includepdf[pages={2,3}]{other/Z_signed.pdf}
+%\includepdf[pages={2,3,4}]{other/Z_signed.pdf}
 % Use Roman numerals for front matter
+% \cleardoublepage
 \pagenumbering{roman}
+\pagestyle{plain}
 % Acknowledgements (optional) - in case your thesis received funding or would like to express special thanks to someone
 \chapter*{\acklabel}
+\input{chapters/acknowledgment.tex}
 \addcontentsline{toc}{chapter}{\acklabel}
 \cleardoublepage
+
+\chapter*{Abstract}
+\input{chapters/abstract.tex}
+\addcontentsline{toc}{chapter}{Abstract}
+\clearpage
+
 % Table of contents (mandatory)
+\newcounter{conpageno}
+\setcounter{conpageno}{\value{page}}
 \tableofcontents
 \cleardoublepage
 
 % Main content
+
+% List of figures (optional) - useful over 3-5 figures
+\phantomsection
+\addcontentsline{toc}{chapter}{\lstfigurelabel}
+\listoffigures
+\cleardoublepage
+
+% List of tables (optional) - useful over 3-5 tables
+ \phantomsection
+ \addcontentsline{toc}{chapter}{\lsttablelabel}
+ \listoftables
+ \cleardoublepage
+
+% List of algorithms (optional) - useful over 3-5 algorithms
+ \phantomsection
+ \addcontentsline{toc}{chapter}{\lstalgorithmlabel}
+ \listofalgorithms
+
 
 
 % Switch to Arabic numerals starting at the introduction
@@ -180,7 +223,7 @@ name={odometry},
 \cleardoublepage
 
 \input{chapters/05_conclusion}
-\cleardoublepage
+%\cleardoublepage
 
 % \input{chapters/06_motivation}
 % \cleardoublepage
@@ -197,10 +240,17 @@ name={odometry},
 % In case your thesis received financial support from a project or the university, it is usually required to indicate the proper attribution in the thesis itself. Special thanks can also be expressed towards teachers, fellow students and colleagues who helped you in the process of creating your thesis.
 
 % Appendices (optional) - useful for detailed information in long tables, many and/or large figures, etc.
-\appendix
-\input{chapters/appendix.tex}
-\cleardoublepage
+%\appendix
+%\input{chapters/appendix.tex}
+%\clearpage
 
+% \appendix
+% \phantomsection
+% \addcontentsline{toc}{chapter}{Appendix}
+\appendix
+\phantomsection
+%\addcontentsline{toc}{chapter}{\annexlabel}
+\input{chapters/appendix.tex}
 
 % Bibliography (mandatory)
 \phantomsection
@@ -208,23 +258,6 @@ name={odometry},
 \printbibliography[title=\biblabel]
 \cleardoublepage
 
-% List of figures (optional) - useful over 3-5 figures
-\phantomsection
-\addcontentsline{toc}{chapter}{\lstfigurelabel}
-\listoffigures
-\cleardoublepage
-
-% List of tables (optional) - useful over 3-5 tables
-% \phantomsection
-% \addcontentsline{toc}{chapter}{\lsttablelabel}
-% \listoftables
-% \cleardoublepage
-
-% List of algorithms (optional) - useful over 3-5 algorithms
-% \phantomsection
-% \addcontentsline{toc}{chapter}{\lstalgorithmlabel}
-% \listofalgorithms
-% \cleardoublepage
 
 % List of codes (optional) - useful over 3-5 code samples
 % \phantomsection
@@ -233,7 +266,7 @@ name={odometry},
 % \cleardoublepage
 
 % List of symbols (optional)
-%\printnomenclature
+\printnomenclature
 
 {\setlength{\baselineskip}{0.6\baselineskip} % Adjust 0.9 to reduce spacing
     \printglossary[type=\acronymtype]

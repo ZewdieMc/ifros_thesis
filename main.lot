@@ -1,0 +1,17 @@
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Parameters for ICP (Point-to-Point)\relax }}{25}{table.caption.95}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Dataset used for evaluating performance of our mapping module\relax }}{32}{table.caption.111}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Extrinsic calibration between IMU and LiDAR for the different datasets we used\relax }}{32}{table.caption.112}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Absolute Pose Error (APE) with respect to translation (in meters) for \texttt {saxion-01}.\relax }}{33}{table.caption.117}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces RMSE of the APE for each Saxion dataset before and after PGO\relax }}{34}{table.caption.120}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces MME($\mu $, $\sigma $) of map generated from the different datasets after each mapping stage. The MME values in \textbf {bold} demonstrate the best quality of the map and those in \underline {underline} show the second best quality of the map.\relax }}{38}{table.caption.129}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces MME comparison with state of the art.\relax }}{40}{table.caption.136}%
+\contentsline {table}{\numberline {4.7}{\ignorespaces Comparison of RMSE of the APE(translation) for the public dataset using our method and other SLAM methods. The values for the method that resulted in smallest error is shown in bold.\relax }}{40}{table.caption.138}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

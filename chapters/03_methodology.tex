@@ -3,14 +3,14 @@
 
 
 \section{System Overview}
-The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial odometry, Scan Context for loop closure detection, PGO using Georgia Tech Smoothing and Mapping (GTSAM \cite{gtsam}) for correcting drifts in the odometry, and finally HBA for global refinement of the map. The diagram shown in figure \ref{fig:overview} illustrates the integrated components used in system pipeline where the LIO and PGO can run in real-time but due to the computational and memory cost, HBA is run offline. 
+The proposed system integrates FAST-LIO2 \cite{xu2022fast} for odometry, Scan Context for loop closure detection, PGO using Georgia Tech Smoothing and Mapping (GTSAM \cite{gtsam}) for correcting drifts in the odometry, and finally HBA for global refinement of the map. The diagram shown in Figure~\ref{fig:overview} illustrates the integrated components used in system pipeline where the LIO and PGO can run in real-time but due to the computational and memory cost, HBA is run offline. 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=\textwidth]{images/block_diagram.pdf}
+	\includegraphics[width=\textwidth]{images/block_diagram.png}
 	\caption{Block diagram of the proposed system pipeline.}
 	\label{fig:overview}
 \end{figure}
-\paragraph{\textnormal{FAST-LIO2 outputs odometry and updated LiDAR scan frames at a frequency of 10-100Hz. The scan frames are updated according to the state estimation module that includes prediction and update steps. Aggregating these scans using the odometry poses can generate accurate map for short trajectories because LIO performs well for sequential registration of scans. However after long trajectory and revisiting the same locations the map diverges due to accumulated drifts in the odometry.}}
+\paragraph{\textnormal{FAST-LIO2 outputs odometry and updated LiDAR scan frames at a frequency of 10-100Hz. The scan frames are updated according to the state estimation module that includes prediction and update steps. Aggregating these scans using the odometry poses can generate accurate map for short trajectories because LIO performs well for sequential registration of scans. However after long trajectory and revisiting the same locations, the map diverges due to accumulated drifts in the odometry.}}
 
 \begin{algorithm}
 	\caption{LiDAR-Inertial Odometry with Global Optimization}
@@ -22,14 +22,14 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 		\State Initialize: $\mathcal{K}$(Keyframe set) $\gets \emptyset$, $\mathcal{G}$(Bipartite graph) $\gets \emptyset$
 		
 		\While{new $(\mathcal{I}_t, \mathcal{L}_t)$ available}
-		\State $\hat{\mathbf{T}}_t \gets \textsc{LIO}(\mathcal{I}_t, \mathcal{L}_t)$ \hspace{10em} \textcolor{gray}{\includegraphics[height=1em]{point_right.png} \textcolor{gray}FAST-LIO2}
+		\State $\hat{\mathbf{T}}_t \gets \textsc{LIO}(\mathcal{I}_t, \mathcal{L}_t)$ 
 		
 		\If{\textsc{IsKeyframe}$(\hat{\mathbf{T}}_t)$}
-		\State $\mathcal{K} \gets \mathcal{K} \cup \{k_t\}$ \hspace{10em}\textcolor{gray}{\includegraphics[height=1em]{point_right.png} \textcolor{gray}Add keyframe}
-		\State $\mathcal{G} \gets \mathcal{G} \cup \{\mathcal{C}_{\text{odom}}(k_t)\}$ \hspace{7em} \textcolor{gray}{\includegraphics[height=1em]{point_right.png} \textcolor{gray} Add odometry constraint}
+		\State $\mathcal{K} \gets \mathcal{K} \cup \{k_t\}$ 
+		\State $\mathcal{G} \gets \mathcal{G} \cup \{\mathcal{C}_{\text{odom}}(k_t)\}$ 
 		
 		\If{\textsc{DetectLoop}$(k_t, \mathcal{K})$}
-		\State $\mathcal{G} \gets \mathcal{G} \cup \{\mathcal{C}_{\text{loop}}(k_t, k_l)\}$ \hspace{5em} \textcolor{gray}{\includegraphics[height=1em]{point_right.png} \textcolor{gray}Add loop closure constraint}
+		\State $\mathcal{G} \gets \mathcal{G} \cup \{\mathcal{C}_{\text{loop}}(k_t, k_l)\}$ 
 		\State $\{\mathbf{T}_i^*\} \gets \textsc{OptimizePoseGraph}(\mathcal{G})$
 		\EndIf
 		\EndIf
@@ -43,7 +43,7 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 \paragraph{\textnormal{In the subsequent sections, detailed description of each of the components used in the system will be presented.}}
 
 \section{Description of FAST-LIO2}
-\paragraph{\textnormal{FAST-LIO2 is a robust and computationally efficient LiDAR-inertial odometry system that tightly fuses LiDAR feature points with IMU data using an IEKF. This enables reliable navigation even in challenging scenarios involving fast motion, sensor noise, or cluttered environments where traditional methods may fail due to degeneracy.To output odometry at higher frequency, a state estimation module fuses both IMU and LiDAR inputs with an IEKF. This involves prediction of the state based on IMU input only also called forward propagation, then iteratively update it with LiDAR inputs until the residual drops below a certain threshold. The state vector \textbf{x} is a 24-dimensional vector containing the state variables shown in Eq. (\ref{eq:flio_state}).}}
+\paragraph{\textnormal{FAST-LIO2 is a robust and computationally efficient LiDAR-inertial odometry system that tightly fuses LiDAR feature points with IMU data using an \gls{iekf}. This enables reliable navigation even in challenging scenarios involving fast motion, sensor noise, or cluttered environments where traditional methods may fail due to degeneracy.To output odometry at higher frequency, a state estimation module fuses both IMU and LiDAR inputs with an \gls{iekf}. This involves prediction of the state based on IMU input only also called forward propagation, then iteratively update it with LiDAR inputs until the residual drops below a certain threshold. The state vector \textbf{x} is a 24-dimensional vector containing the state variables shown in Eq. (\ref{eq:flio_state}).}}
 
 \begin{equation}\label{eq:flio_state}
 	\begin{split}
@@ -83,37 +83,37 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 	 \quad \hat{\mathbf{x}}_k^{\kappa+1} &= \hat{\mathbf{x}}_k^\kappa \boxplus \left( -\mathbf{K} \mathbf{z}_k^\kappa - (\mathbf{I} - \mathbf{K} \mathbf{H}) (\mathbf{J}^\kappa)^{-1} (\hat{\mathbf{x}}_k^\kappa \boxminus \hat{\mathbf{x}}_k) \right). \label{eq:state_update}
 \end{align}
 
-\begin{algorithm}
-	\caption{State Estimation with IEKF}
-		\label{alg:lio}
-	\begin{algorithmic}[1]
-		\State \textbf{Input} : Last output $\bar{\mathbf{x}}_{k-1}$ and $\bar{\mathbf{P}}_{k-1}$;
-		\State \hspace{2.5em} LiDAR raw points in current scan;
-		\State \hspace{2.5em} IMU inputs ($\mathbf{a}_m$, $\boldsymbol{\omega}_m$) during current scan.
-		\State Forward propagation to obtain state prediction $\hat{\mathbf{x}}_k$ and its covariance $\hat{\mathbf{P}}_k$ via Eq. (\ref{eq:prediction});
-		\State Backward propagation to compensate motion \cite{xu2021fastlio};
-		\State $\kappa = -1$, $\hat{\mathbf{x}}_k^{\kappa=0} = \hat{\mathbf{x}}_k$;
-		\Repeat
-		\State \hspace{1.5em} $\kappa = \kappa + 1$;
-		\State \hspace{1.5em} Compute $\mathbf{J}^\kappa$ as in \cite{xu2022fast} and $\mathbf{P} = (\mathbf{J}^\kappa)^{-1} \hat{\mathbf{P}}_k (\mathbf{J}^\kappa)^{-T}$;
-		\State \hspace{1.5em} Compute residual $\mathbf{z}_j^\kappa$ and Jacobian $\mathbf{H}_j^\kappa$ as in \cite{xu2022fast};
-		\State \hspace{1.5em} Compute the state update $\hat{\mathbf{x}}_k^{\kappa+1}$ via (\ref{eq:kalman_gain} and \ref{eq:state_update});
-		\Until{$\|\hat{\mathbf{x}}_k^{\kappa+1} \boxminus \hat{\mathbf{x}}_k^\kappa \| < \epsilon$;}
-		\State $\bar{\mathbf{x}}_k = \hat{\mathbf{x}}_k^{\kappa+1}, \quad \bar{\mathbf{P}}_k = (\mathbf{I} - \mathbf{K} \mathbf{H}) \mathbf{P}$;
-		\State Obtain the transformed LiDAR points $\{{}^{G}\bar{\mathbf{p}}_j\}$.
-		\State \textbf{Output}: Current optimal estimate $\bar{\mathbf{x}}_k$ and $\bar{\mathbf{P}}_k$;
-		\State \hspace{3.5em} The transformed LiDAR points $\{{}^{G}\bar{\mathbf{p}}_j\}$.
-	\end{algorithmic}
-\end{algorithm}
+%\begin{algorithm}
+%	\caption{State Estimation with IEKF}
+%		\label{alg:lio}
+%	\begin{algorithmic}[1]
+%		\State \textbf{Input} : Last output $\bar{\mathbf{x}}_{k-1}$ and $\bar{\mathbf{P}}_{k-1}$;
+%		\State \hspace{2.5em} LiDAR raw points in current scan;
+%		\State \hspace{2.5em} IMU inputs ($\mathbf{a}_m$, $\boldsymbol{\omega}_m$) during current scan.
+%		\State Forward propagation to obtain state prediction $\hat{\mathbf{x}}_k$ and its covariance $\hat{\mathbf{P}}_k$ via Eq. (\ref{eq:prediction});
+%		\State Backward propagation to compensate motion \cite{xu2021fastlio};
+%		\State $\kappa = -1$, $\hat{\mathbf{x}}_k^{\kappa=0} = \hat{\mathbf{x}}_k$;
+%		\Repeat
+%		\State \hspace{1.5em} $\kappa = \kappa + 1$;
+%		\State \hspace{1.5em} Compute $\mathbf{J}^\kappa$ as in \cite{xu2022fast} and $\mathbf{P} = (\mathbf{J}^\kappa)^{-1} \hat{\mathbf{P}}_k (\mathbf{J}^\kappa)^{-T}$;
+%		\State \hspace{1.5em} Compute residual $\mathbf{z}_j^\kappa$ and Jacobian $\mathbf{H}_j^\kappa$ as in \cite{xu2022fast};
+%		\State \hspace{1.5em} Compute the state update $\hat{\mathbf{x}}_k^{\kappa+1}$ via (\ref{eq:kalman_gain} and \ref{eq:state_update});
+%		\Until{$\|\hat{\mathbf{x}}_k^{\kappa+1} \boxminus \hat{\mathbf{x}}_k^\kappa \| < \epsilon$;}
+%		\State $\bar{\mathbf{x}}_k = \hat{\mathbf{x}}_k^{\kappa+1}, \quad \bar{\mathbf{P}}_k = (\mathbf{I} - \mathbf{K} \mathbf{H}) \mathbf{P}$;
+%		\State Obtain the transformed LiDAR points $\{{}^{G}\bar{\mathbf{p}}_j\}$.
+%		\State \textbf{Output}: Current optimal estimate $\bar{\mathbf{x}}_k$ and $\bar{\mathbf{P}}_k$;
+%		\State \hspace{3.5em} The transformed LiDAR points $\{{}^{G}\bar{\mathbf{p}}_j\}$.
+%	\end{algorithmic}
+%\end{algorithm}
 \paragraph{\textnormal{Sequential state estimation with LIO suffers from drift over long trajectories due to inherent noise in the robot motion, sensor measurements, data association problems, or dynamics in the environment \cite{gupta2024icra}. Due to such a drift, when the robot revisits the same place, its belief may indicate a different location than it already knows. To overcome this problem, we proposed to integrate PGO with LIO so that such accumulated errors are corrected. PGO adds loop closure constraints to the robot poses when the same locations are revisited. To add loop closure constraints, a methodology to efficiently detect loop closure is required. In the next section, we discussed a robust loop closure detection methods and elaborated on one method we used in our research.}}
 \section{Loop Closure Detection}
-\paragraph{\textnormal{To maintain accurate pose estimate by mitigating global drift, loop closure via recognizing revisited places plays a vital role in SLAM with PGO. Therefore, a robust and efficient methodology for detecting loop closures is required to enforce a strong constraint in the graph. This enables us to have not only a better estimate of the current state and better model of the environment but also a better estimate of where the robot was in the past, since all the past poses will be updated as well.}}
+\paragraph{\textnormal{To maintain accurate pose estimate by mitigating global drift, loop closure via recognizing revisited places plays a vital role in SLAM. Therefore, a robust and efficient methodology for detecting loop closures is required to enforce a strong constraint in the graph. This enables us to have not only a better estimate of the current state and better model of the environment but also a better estimate of where the robot was in the past, since all the past poses will be updated as well.}}
 \paragraph{\textnormal{Even though having many loop closure constraints in the graph improves our estimate, special attention should be paid not include false positive constraints by incorrect association or perceptual aliasing in the graph because they will introduce a large error into the our estimation and it is difficult to remove them once they are added. It is better to miss a true loop closures than it is to add a false one. It is important to emphasize that loop closure relies on absolute measurements of the environment, typically obtained from sensors such as LiDAR, cameras, or other environmental sensing devices. Relative sensors, including the IMU or wheel encoders, are insufficient for performing loop closure. Therefore, using these relative sensors for detecting loops should be avoided.
 }}
 
 \subsection{Scan Context}
-
-\begin{figure}[h!]
+\paragraph{\textnormal{As described in \ref{sec:related_work}, Scan Context is a novel spatial descriptor and matching algorithm designed for outdoor place recognition using a single 3D scan. It encodes the entire point cloud from a 3D scan into a 2D matrix representation of size $N_r \times N_s$ (figure \ref{fig:bin_encode}) where $N_r$ denotes the number of rings and $N_s$ is the number of sectors. These two variables parameters that can be tuned based on the environment. The radial resolution of the rings for LiDAR with maximum range set to $ L_{max} $ is $\frac{L_{max}}{N_r}$ and the angle of one sector is $\frac{2\pi}{N_s}$.}}
+\begin{figure}[H]
 	\centering
 	\begin{subfigure}[b]{0.22\textwidth}
 		\frame{\includegraphics[width=\linewidth]{images/lc_source.png}}
@@ -151,8 +151,6 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 	\label{fig:detected_loop}
 \end{figure}
 
-
-\paragraph{\textnormal{As described in \ref{sec:related_work}, Scan Context is a novel spatial descriptor and matching algorithm designed for outdoor place recognition using a single 3D scan. It encodes the entire point cloud from a 3D scan into a 2D matrix representation of size $N_r \times N_s$ (figure \ref{fig:bin_encode}) where $N_r$ denotes the number of rings and $N_s$ is the number of sectors. These two variables parameters that can be tuned based on the environment. The radial resolution of the rings for LiDAR with maximum range set to $ L_{max} $ is $\frac{L_{max}}{N_r}$ and the angle of one sector is $\frac{2\pi}{N_s}$.}}
 
 \paragraph{\textnormal{A bin is represented as a set of points that belong to $\textit{i}th$ ring and $\textit{j}th$ sector of the 2D partition where $i \in [1, N_r]$ and $j \in [1, N_s]$. For each bin, the maximum height (z value) of points falling into the bin is stored. This way, an intensity image also known as \textit{Scan Context} of the point cloud in a single scan is generated as in Eq. (\ref{eq:scan_context}) where $\phi$ is a function that assigns the maximum height of the points in the given bin represented by $i$ and  $j$.}}
 
@@ -290,10 +288,10 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 \caption{A point cloud from a single 3D scan is encoded into a Scan Context. An $N_{r}$ dimensional ring key is then extracted and used to build a KD-tree for retrieving nearest candidates. These candidates are compared with the query, and the closest one that meets the acceptance threshold is selected as a loop closure\cite{kim2018scan}.}
 \end{figure}
 
-\subsection{Radius based search for loop detection}
+%\subsection{Radius based search for loop detection}
 
 \section{ICP for computing loop closure constraint}
-\paragraph{\textnormal{ICP \cite{4767965} is a widely used algorithm for rigid registration of 3D point clouds. It operates by iteratively refining the alignment between a source and a target point cloud by minimizing the sum of squared distances between corresponding points. In each iteration, it first identifies the closest points between the two clouds, estimates the best-fit rigid transformation (rotation and translation), applies this transformation to the source, and repeats the process until convergence. The optimal rotation R is computed using singular value decomposition (SVD) \cite{golub1971singular} of the cross covariance matrix of the $\textbf{H}$  shown in Eq. (\ref{eq:matrix_h}) of the corresponding points where $x_0$ and $y_0$ are the weighted mean of point clouds X, and Y respectively. The basic alignment problem of point sets $X$ and $Y$ is shown in Eq. (\ref{eq:icp_align}) where $x_i$ and $y_j$ are corresponding points that belong to 3D point clouds $X$ and $Y$ respectively. }}
+\paragraph{\textnormal{\gls{icp} \cite{4767965} is a widely used algorithm for rigid registration of 3D point clouds. It operates by iteratively refining the alignment between a source and a target point cloud by minimizing the sum of squared distances between corresponding points. In each iteration, it first identifies the closest points between the two clouds, estimates the best-fit rigid transformation (rotation and translation), applies this transformation to the source, and repeats the process until convergence. The optimal rotation R is computed using \gls{svd} \cite{golub1971singular} of the cross covariance matrix of the $\textbf{H}$  shown in Eq. (\ref{eq:matrix_h}) of the corresponding points where $x_0$ and $y_0$ are the weighted mean of point clouds X, and Y respectively. The basic alignment problem of point sets $X$ and $Y$ is shown in Eq. (\ref{eq:icp_align}) where $x_i$ and $y_j$ are corresponding points that belong to 3D point clouds $X$ and $Y$ respectively. }}
 \begin{equation}
 	(\mathbf{R}^*, \mathbf{t}^*) = \arg\min_{\mathbf{R}, \mathbf{t}} \sum_{(i,j)\in \mathcal{C}} \left\| \mathbf{y}_i - \mathbf{R} \mathbf{x}_j - \mathbf{t} \right\|^2
 	\label{eq:icp_align}
@@ -387,7 +385,7 @@ The proposed system integrates FAST-LIO2 \cite{xu2022fast} for LiDAR-inertial od
 	\caption{Pose graph for KITTI00 sequence before optimization, nodes are shown in red dots, and factors are shown in green lines. The blue trajectory shows the path after the pose graph is optimized.}
 	\label{fig:factor_graph}
 \end{figure}
-\section{Global refinement using HBA}
+\section{Global refinement using Bundle Adjustment}
 \label{sec:hba}
 \paragraph{\textnormal{Minimization of the global error function Eq.(\ref{eq:Fx}) generates best estimate of the robot poses that best fit the measurements under Gaussian assumption of the relative pose estimation. This minimization corrects the drift in the LiDAR odometry and inconsistency in the map. However, due to loop closure inaccuracy and optimization of only relative pose, there would still be small misalignments in the map after PGO. As discussed in section \ref{sec:lba}, LBA works to minimize the overall point-to-plane distance to optimize the mapping consistency. However this optimization process requires $\mathbf{O}(N^3)$ time to solve where $N$ is the number of LiDAR poses involved in the computation. To address this issue, Xiyuan Liu et al. \cite{himstedt2014large} proposed HBA method that globally optimizes the map consistency maintaining the efficiency of time consumption.
 }}

@@ -4,6 +4,39 @@
 % Future improvements:
 % integrate RGB data
 % 
+\paragraph{\textnormal{
+This chapter summarizes the key findings of the research, revisits the research questions relating to the results, highlights the main contributions of the work, and offers recommendations for future research. The study aimed to develop a robust LiDAR-based SLAM framework that integrates LiDAR-inertial odometry, loop closure, and global optimization to generate globally consistent maps in diverse environments. Through extensive experiments across indoor and outdoor datasets, the system's performance has been evaluated, demonstrating its effectiveness in addressing the challenges of real-time mapping and global map consistency in SLAM.
+}}
 
+\section{Summary of Findings}
+\paragraph{\textnormal{
+The proposed SLAM system, demonstrated significant improvements in trajectory accuracy and map consistency across multiple datasets. Quantitative results showed that PGO effectively reduced accumulated drift in real-time but does not optimize the map consistency, while HBA further refined global alignment and improved map consistency. The system performed particularly well in indoor and large-scale outdoor environments with frequent loop closures. Overall, the hybrid approach successfully addressed the limitations of individual modules, yielding a robust and consistent mapping pipeline.
+}}
+
+\section{Research questions revisited}
+\textbf{1. Is LiDAR Inertial Odometry sufficient to generate accurate map of complex environments?\\}
+LiDAR Inertial Odometery frameworks provide accurate short-term motion estimates. FAST-LIO2, for instance, generates accurate and consistent map for short trajectories, especially for indoor environments with more structured features. However, in large-scale or long-duration scenarios, it accumulates drifts and fails to maintain global map consistency.
+\textbf{\\2. What are the limitations of Graph SLAM in generating consistent map especially
+	in revisited locations?\\}
+Graph SLAM, while effective at correcting drift through loop closures, relies heavily on accurate loop detection and alignment. When loop closures are missed or poorly aligned, it can lead to residual errors or duplicated structures in the map. Moreover, PGO alone does not enforce point cloud consistency as it only optimizes the relative pose constraints between nodes in the graph.
+
+\textbf{\\3. How effective is it to integrate LiDAR Inertial Odometry, Graph SLAM, and LiDAR Bundle Adjustment for generating globally consistent map of environments?}
+
+The integration of LiDAR inertial odometery, PGO, and HBA proved highly effective in improving trajectory accuracy and map consistency. FAST-LIO2 offers reliable real-time odometry, while PGO reduces drift through loop closure. HBA further refines the global structure by jointly optimizing poses and point clouds. While FAST-LIO2 andn PGO are able to run in real-time, due to its computational cost, HBA is performed offline and it significantly enhances map quality in complex or large-scale environments where global accuracy is essential.
 \section{Contributions}
-\paragraph{\textnormal{Interfacing FAST-LIO2, and HBA with PGO resuleted in an improved mapping system while FAST-LIO2 alone fails to generate accurate map, and directly applying HBA to LIO maps does not correct the divergence because HBA only works for divergences smaller than the largest voxel size it uses. Hence integrating PGO to improve the map quality in loop closure areas is crucial. Also HBA does not work for areas with multiple revisits and duplication in map. Ellaboration is required here. this is like a place holder text}}
+\paragraph{\textnormal{The key contribution of this work is the integration of PGO as an effective bridge between FAST-LIO2 and HBA. While FAST-LIO2 provides accurate local motion estimation, it accumulates significant drift over long trajectories, which results in inconsistent global maps. Directly applying HBA to FAST-LIO2 output is ineffective in such cases, as HBA is limited to correcting divergences smaller than the voxel size used during optimization and cannot resolve large-scale drift. By introducing PGO between FAST-LIO2 and HBA, the system first reduces drift through loop closure constraints, producing an initial globally consistent trajectory, in real time, that falls within the convergence range of HBA. This makes HBA effective in further refining both trajectory and point cloud alignment. Moreover, PGO addresses challenges in revisited areas and helps mitigate duplication in the map, which HBA alone cannot resolve.This structured integration of local odometry, loop closure-based correction, and global refinement leads to a SLAM system that is both more reliable and capable of producing consistent maps across complex environments.}}
+
+\section{ Future work}
+\paragraph{	\textnormal{Although the proposed hybrid LiDAR SLAM system demonstrates promising results in generating globally consistent maps for both indoor and outdoor environments, several directions can be explored to further improve the system:}}
+		
+	\begin{itemize}
+		\item \textbf{Robust Loop Closure with Deep Learning:} \\
+		Incorporating deep learning-based loop closure methods can improve detection accuracy in perceptually challenging environments. Learned descriptors can better capture semantic and geometric features, enabling more reliable loop detection across varying viewpoints and conditions.
+		
+		\item \textbf{Dynamic Object Removal:} \\
+		Filtering out dynamic objects such as pedestrians and vehicles can significantly improve map consistency. Future work could use motion segmentation, temporal filtering, or semantic classification to exclude non-static elements from the mapping process.
+		
+		\item \textbf{Camera-LiDAR Fusion:} \\
+		Combining visual data with LiDAR can enhance performance in environments with sparse geometric features. The fusion of semantic-rich camera input with LiDAR geometry can improve localization, mapping accuracy, and overall scene understanding.
+		
+	\end{itemize}

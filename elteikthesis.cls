@@ -139,6 +139,7 @@
 		\newcommand{\alglabel}{Algorithm}
 
 		\newcommand{\biblabel}{Bibliography}
+		\newcommand{\annexlabel}{Appendices} % Istenes
 		\newcommand{\lstalgorithmlabel}{List of Algorithms}
 		\newcommand{\lstfigurelabel}{List of Figures}
 		\newcommand{\lsttablelabel}{List of Tables}
@@ -375,7 +376,7 @@
 
 %\RequirePackage[pdfborder={0 0 0}, unicode, pdfusetitle, \hyperrefComp]{hyperref}
 \RequirePackage[
-pdfborder={0 0 0}, unicode, pdfusetitle, colorlinks=true, citecolor=blue, linkcolor=blue,urlcolor=black]{hyperref}
+pdfborder={0 0 0}, unicode, pdfusetitle, colorlinks=true, citecolor=blue, linkcolor=black,urlcolor=black]{hyperref}
 
 \RequirePackage[all]{hypcap}
 \RequirePackage{url}
@@ -606,13 +607,15 @@ pdfborder={0 0 0}, unicode, pdfusetitle, colorlinks=true, citecolor=blue, linkco
 	% Page numbering starts with Table of Contents, but not shown there
 	\let\oldtableofcontents\tableofcontents
 	\renewcommand{\tableofcontents}{
-		\pagenumbering{gobble}
+		\begingroup
+		\pagenumbering{gobble}     % Hide page numbers only for ToC
 		\oldtableofcontents
 		\cleardoublepage
-		% Save and load page number, because \pagenumbering resets it
-		\newcounter{conpageno}
-		\defcounter{conpageno}{\value{page}}
-		\pagenumbering{arabic}
-		\setcounter{page}{\value{conpageno}}
+		\endgroup
+		% Restore page numbers WITHOUT resetting counter
+		\pagenumbering{roman}     % this resets counter
+		\setcounter{page}{\value{conpageno}}  % so restore saved counter
+		\pagestyle{plain}
 	}
+
 }
